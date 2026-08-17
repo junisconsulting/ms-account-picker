@@ -11,7 +11,7 @@ Diese vier Annahmen tragen das Design. Sie sind manuell und einmalig — solange
 | # | Annahme | Prüfung | Konsequenz bei negativ |
 | --- | --- | --- | --- |
 | V1 | `prompt=select_account` **plus** `login_hint` wählt das EADM im Picker vor | Authorize-URL eines Portals von Hand um beide Parameter ergänzen, aufrufen | Keine — es bleibt beim Picker ohne Vorauswahl (`open-questions.md` F1). Bei positiv: beide Anforderungen erfüllt, Modus-Design vereinfacht sich |
-| V2 🔴 | Device Claim (`deviceDetail.deviceId`) bleibt bei `prompt`/`login_hint` erhalten | Anmelden, dann Entra Sign-in-Log → Eintrag → `deviceDetail.deviceId` | Die Device-Claim-CA blockt im Erzwingungsmodus → Projekt trägt nicht. **Ein erfolgreicher Sign-in beweist das nicht**, solange sie report-only ist |
+| ~~V2~~ ✅ | Device Claim (`deviceDetail.deviceId`) bleibt bei `prompt`/`login_hint` erhalten | **Belegt 2026-08-17, manuell im Sign-in-Log, in beiden Modi.** Die Extension bricht die Gerätebindung nicht — das Abbruchkriterium des Gesamtkonzepts ist damit ausgeräumt | — |
 | V3 | `login_hint` überschreibt einen PRT für einen **anderen** User | Manuell, wie beim `select_account`-Test | `login_hint`-Modus entfällt ersatzlos, Picker bleibt einziger Modus |
 | ~~V4~~ ✅ | `host_permissions` auf `login.microsoftonline.com` reicht für den Redirect aus | **Belegt 2026-08-17 durch `tests/e2e/dnr.e2e.js`** — die Regel greift auch bei Navigation von einem fremden Origin ohne Host-Permission. Das Abbruchkriterium aus `security-review.md` §4 ist damit vorerst abgewendet | — |
 
@@ -81,7 +81,8 @@ Eintrag pro Zelle: `A✓ B✓ C✓` oder die konkrete Abweichung. Kein `n/a` ohn
 
 | Datum | Extension-Version | Edge-Version | Umfang | Ergebnis | Durchgeführt von |
 | --- | --- | --- | --- | --- | --- |
-| — | — | — | Phase 1: kein Code | — | — |
+| 2026-08-17 | 0.0.0 (unpacked) | _nachzutragen_ | E2E gegen lokalen Fake-Endpunkt: Z3, V4, A1-Mechanismus, A3, Z5, Options-Seite | grün, 14/14 | Claude, automatisiert |
+| 2026-08-17 | 0.0.0 (unpacked) | _nachzutragen_ | **V2** — Device Claim im Sign-in-Log, Picker- **und** Hint-Modus | 🟢 `deviceDetail.deviceId` gefüllt, beide Modi | D. H. |
 
 Bei einer eng begrenzten Änderung genügt die betroffene Zeile plus Z1 und Z2. Vor einem Ringwechsel im Rollout: die **vollständige** Matrix.
 

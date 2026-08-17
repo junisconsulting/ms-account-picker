@@ -102,15 +102,16 @@ Der Schalter ist kein Rollback-Pfad auf Flottenebene — der läuft über die Po
 - `prompt=select_account` unterbricht das PRT-basierte Auto-SSO zuverlässig. Manuell verifiziert am Azure-Portal-Request (`/organizations/oauth2/v2.0/authorize`).
 - Der reale Request nutzt `/organizations/`, nicht `/common/` → das Tenant-Segment im Regex muss variabel sein.
 - Vorgebaute URLs scheitern an PKCE und Single-Use-`state`.
+- 🟢 **Der Device Claim bleibt erhalten — in beiden Modi.** Manuell im Sign-in-Log verifiziert (2026-08-17). Damit ist die zentrale Unsicherheit des Konzepts ausgeräumt: die Extension bricht die Gerätebindung nicht, die Device-Claim-CA blockt auch im Erzwingungsmodus nicht.
+- Kein Redirect-Loop: Chromium führt einen Redirect auf eine identische URL nicht aus. Automatisiert belegt durch `tests/e2e/dnr.e2e.js` (2026-08-17).
+- `host_permissions` auf `login.microsoftonline.com` reichen aus — die Regel greift auch bei Navigation von einem fremden Origin. Automatisiert belegt (2026-08-17). Das Abbruchkriterium aus `security-review.md` §4 ist damit nicht eingetreten.
 
-### 7.2 Noch nicht belegt (Prereqs für Phase 2)
+### 7.2 Noch nicht belegt
 
-| Annahme | Verifikation |
-| --- | --- |
-| `login_hint` überschreibt einen PRT für einen **anderen** User | Manuell, wie beim `select_account`-Test |
-| Device Claim (`deviceDetail.deviceId`) bleibt bei `prompt`/`login_hint` erhalten | Sign-in-Log nach Anmeldung prüfen. Vom Auftraggeber als gegeben angenommen, weil die Device-Claim-CA sonst blocken würde — solange diese report-only ist, ist das **keine** belastbare Ableitung und muss einmal explizit bestätigt werden |
-| Kein Redirect-Loop bei bereits gesetztem Parameter | Integrationstest |
-| `host_permissions` auf `login.microsoftonline.com` reicht für Redirects aus | Integrationstest. Falls Initiator-Domains nötig sind → Governance-Neubewertung, siehe `security-review.md` §Abbruchkriterium |
+| Annahme | Verifikation | Konsequenz bei negativ |
+| --- | --- | --- |
+| `login_hint` überschreibt einen PRT für einen **anderen** User | Manuell, im EADM-Profil bei aktivem Workforce-PRT | `login_hint`-Modus entfällt ersatzlos; der Picker bleibt einziger Modus und trägt das Konzept allein |
+| `prompt=select_account` + `login_hint` wählt das Konto im Picker vor | Manuell, Authorize-URL um beide Parameter ergänzen | Keine — es bleibt beim Picker ohne Vorauswahl |
 
 ## 8. Referenzen
 
