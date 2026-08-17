@@ -1,43 +1,81 @@
 <!doctype html>
 <!--
-  Options page: the only UI this extension has. Captures the EADM UPN and the
-  operating mode, writes them to chrome.storage.local. No inline scripts (MV3
-  CSP forbids them), no remote fonts or stylesheets.
-
-  PHASE 1 PLACEHOLDER — markup skeleton only, no styling and no behaviour.
+  Options page: the only UI this extension has. Captures activation, mode and
+  the EADM UPN, writes them to chrome.storage.local. No inline scripts (MV3 CSP
+  forbids them), no remote fonts or stylesheets.
 
   This page is the ONLY configuration source (decided, docs/open-questions.md
-  F3): the admin enters the UPN once and it is persisted in chrome.storage.local.
-  No policy pre-fill, no chrome.storage.managed — deliberately, because the
-  EADM naming differs per customer.
+  F3): the admin enters the UPN once and it is persisted per profile. No policy
+  pre-fill, no chrome.storage.managed — deliberately, because the EADM naming
+  differs per customer.
 -->
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <title>MS Account Picker — Options</title>
+    <style>
+      /* Deliberately minimal. Readable spacing, nothing else — this page is
+         used once per profile and has no business looking like a product. */
+      body {
+        font: 14px/1.5 system-ui, sans-serif;
+        margin: 0;
+        padding: 1.5rem;
+        max-width: 34rem;
+      }
+      h1 { font-size: 1.1rem; margin: 0 0 1rem; }
+      fieldset { border: 1px solid #ccc; border-radius: 4px; margin: 1rem 0; padding: 0.75rem 1rem; }
+      legend { padding: 0 0.35rem; font-weight: 600; }
+      label { display: block; margin: 0.4rem 0; }
+      input[type="email"] { width: 100%; padding: 0.4rem; box-sizing: border-box; }
+      input[type="email"]:disabled { background: #f2f2f2; color: #888; }
+      .note { color: #666; font-size: 0.9em; margin: 0.25rem 0 0; }
+      .warn { color: #8a4b00; }
+      #status { min-height: 1.5em; font-weight: 600; }
+      #status.error { color: #b3261e; }
+      button { padding: 0.4rem 1.2rem; }
+    </style>
   </head>
   <body>
     <h1>MS Account Picker</h1>
 
     <!-- The activation gate (A3). Unchecked by default and per profile: an
-         untouched profile registers no rule at all. Doubles as the kill switch
-         for hint mode, where no other account is reachable while active. -->
+         untouched profile registers no rule at all, which is what makes a
+         browser-wide force-install safe. Doubles as the kill switch for hint
+         mode, where no other account is reachable while active. -->
     <label>
       <input id="enabled" type="checkbox" />
-      Active in this profile
+      <strong>Active in this profile</strong>
     </label>
+    <p class="note">
+      Leave this off in your workforce profile. While off, the extension registers
+      no rule and changes nothing.
+    </p>
 
     <fieldset>
       <legend>Mode</legend>
-      <label><input type="radio" name="mode" value="picker" checked /> Account picker (prompt=select_account) — default</label>
-      <label><input type="radio" name="mode" value="hint" /> Direct sign-in (login_hint) — no other account reachable while active</label>
+      <label>
+        <input type="radio" name="mode" value="picker" checked />
+        Account picker — always show the account chooser
+      </label>
+      <label>
+        <input type="radio" name="mode" value="hint" />
+        Direct sign-in — go straight to the account below
+      </label>
+      <p class="note warn">
+        Direct sign-in makes every other account unreachable, including other
+        tenants. Switch this profile off above to sign in elsewhere.
+      </p>
     </fieldset>
 
-    <!-- Only used in hint mode; picker mode needs no UPN. -->
-    <label for="upn">EADM UPN</label>
-    <input id="upn" type="email" autocomplete="off" placeholder="admin@contoso.onmicrosoft.com" />
+    <label for="upn">EADM UPN <span class="note">(direct sign-in only)</span></label>
+    <input id="upn" type="email" autocomplete="off" spellcheck="false"
+           placeholder="admin@contoso.onmicrosoft.com" />
+    <p class="note">
+      This value is written into the sign-in URL and therefore appears in browser
+      history and proxy logs. The account picker mode sends no identity at all.
+    </p>
 
-    <button id="save" type="button">Save</button>
+    <p><button id="save" type="button">Save</button></p>
     <p id="status" role="status"></p>
 
     <script type="module" src="options.js"></script>

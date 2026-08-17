@@ -310,6 +310,56 @@ try {
   await check("getDynamicRules() is empty again", async () => {
     assert.deepEqual(await rules(), []);
   });
+
+  // The options page is the only configuration path in production. A broken save
+  // means a silently inert extension, which looks like nothing at all.
+  console.log("\nOptions page — the only configuration path");
+  const extId = sw.url.split("/")[2];
+  const tab = await fetch(
+    `http://127.0.0.1:${devtoolsPort}/json/new?${encodeURIComponent(`chrome-extension://${extId}/options/options.html`)}`,
+    { method: "PUT" },
+  ).then((r) => r.json());
+  await sleep(500);
+  const page = await Cdp.connect(tab.webSocketDebuggerUrl);
+
+  const fillAndSave = (mode, upnValue) =>
+    page.evaluate(`(() => {
+      document.getElementById('enabled').checked = true;
+      const radio = document.querySelector('input[name="mode"][value="${mode}"]');
+      radio.checked = true;
+      radio.dispatchEvent(new Event('change'));
+      document.getElementById('upn').value = ${JSON.stringify(upnValue)};
+      document.getElementById('save').click();
+      return true;
+    })()`);
+
+  // A UPN carrying an extra parameter must never reach a rule — that is the
+  // whole point of the trust boundary in rules.js.
+  await fillAndSave("hint", "evil@contoso.com&redirect_uri=https://attacker.test");
+  await sleep(400);
+  await check("a UPN with a smuggled parameter is refused, no rule is written", async () => {
+    assert.deepEqual(await rules(), []);
+    const msg = await page.evaluate("document.getElementById('status').textContent");
+    assert.match(msg, /plain user@domain/);
+  });
+
+  await fillAndSave("hint", UPN);
+  await sleep(400);
+  await check("a valid configuration saved from the page produces the rule", async () => {
+    const saved = await rules();
+    assert.equal(saved.length, 1);
+    assert.deepEqual(
+      saved[0].action.redirect.transform.queryTransform.addOrReplaceParams,
+      [{ key: "login_hint", value: UPN }],
+    );
+  });
+
+  await page.evaluate("document.getElementById('enabled').checked = false; document.getElementById('save').click()");
+  await sleep(400);
+  await check("unchecking 'active in this profile' removes the rule", async () => {
+    assert.deepEqual(await rules(), []);
+  });
+  await fetch(`http://127.0.0.1:${devtoolsPort}/json/close/${tab.id}`);
 } finally {
   chrome.kill();
   server.close();
