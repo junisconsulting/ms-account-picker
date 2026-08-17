@@ -25,6 +25,18 @@ const SRC = resolve(dirname(fileURLToPath(import.meta.url)), "../../src");
 const PORT = 8443;
 const UPN = "admin@contoso.onmicrosoft.com";
 
+// Two fake portals. They are never fetched — a portal only ever appears as a
+// string inside the redirect_uri of an authorize URL, which is exactly the
+// mechanism the per-site rules match on.
+const SITE_A = "portal-a.example";
+const SITE_B = "portal-b.example";
+
+const AUTHORIZE = "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize";
+
+/** An authorize URL whose redirect_uri points at the given fake portal. */
+const authorizeFor = (domain, extra = "") =>
+  `${AUTHORIZE}?client_id=test&redirect_uri=https%3A%2F%2F${domain}%2Fauth${extra}`;
+
 // Every request the fake ESTS sees, in order. This list IS the loop detector:
 // one navigation must produce exactly two entries, never more.
 const seen = [];
@@ -165,11 +177,16 @@ const server = createServer({ key, cert }, (req, res) => {
   }
   // The silent-renewal shape: an authorize request inside a hidden iframe. This
   // is what constraint A1 protects — the rule must not touch it, or token
-  // renewal breaks in every M365 portal.
+  // renewal breaks in every M365 portal. The `?site` variant carries a
+  // redirect_uri that a configured per-site rule would match, so it also proves
+  // the site rules respect A1.
   if (req.url.startsWith("/iframe")) {
+    const redirect = req.url.includes("site")
+      ? `&redirect_uri=https%3A%2F%2F${SITE_A}%2Fauth`
+      : "";
     res.writeHead(200, { "content-type": "text/html" });
     return res.end(
-      `<html><body><iframe src="https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?client_id=test&prompt=none"></iframe></body></html>`,
+      `<html><body><iframe src="https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?client_id=test&prompt=none${redirect}"></iframe></body></html>`,
     );
   }
   res.writeHead(200, { "content-type": "text/html" });
@@ -311,9 +328,151 @@ try {
     assert.deepEqual(await rules(), []);
   });
 
+  // --- per-site rules ------------------------------------------------------
+  //
+  // This block is where the three-band priority model is either confirmed or
+  // Plan B (site-scoped only, no base rule) is triggered.
+
+  /** Replaces the whole stored configuration and waits for the rule sync. */
+  const configure = async (config) => {
+    await cdp.evaluate(
+      `chrome.storage.local.clear().then(() => chrome.storage.local.set(${JSON.stringify(config)}))`,
+    );
+    await sleep(400);
+  };
+
+  console.log("\nE1 — per-site hint beats the global picker default");
+  await configure({
+    enabled: true,
+    mode: "picker",
+    upn: UPN,
+    sites: [{ domain: SITE_A, mode: "hint" }],
+  });
+  const e1 = authorizeOnly(await navigate(devtoolsPort, authorizeFor(SITE_A)));
+  await check("exactly one request — no loop between the base and the site rule", () => {
+    assert.equal(e1.length, 1, `saw ${e1.length}: ${e1.join(" | ")}`);
+  });
+  await check("it carries login_hint and NOT prompt (the guard held)", () => {
+    assert.match(e1[0] ?? "", /[?&]login_hint=/);
+    assert.doesNotMatch(e1[0] ?? "", /[?&]prompt=/);
+  });
+
+  console.log("\nE2 — a URL that already carries the site parameter is left alone");
+  const e2 = authorizeOnly(
+    await navigate(devtoolsPort, authorizeFor(SITE_A, `&login_hint=${encodeURIComponent(UPN)}`)),
+  );
+  await check("still one request, and still no prompt added on top", () => {
+    assert.equal(e2.length, 1, `saw ${e2.length}: ${e2.join(" | ")}`);
+    assert.doesNotMatch(e2[0], /[?&]prompt=/);
+  });
+
+  console.log("\nE3 — an 'off' site is untouched while the default still applies elsewhere");
+  await configure({
+    enabled: true,
+    mode: "picker",
+    upn: UPN,
+    sites: [{ domain: SITE_A, mode: "off" }],
+  });
+  const e3off = authorizeOnly(await navigate(devtoolsPort, authorizeFor(SITE_A)));
+  const e3ctl = authorizeOnly(await navigate(devtoolsPort, authorizeFor(SITE_B)));
+  await check("the off site receives no parameter at all", () => {
+    assert.equal(e3off.length, 1, `saw ${e3off.length}: ${e3off.join(" | ")}`);
+    assert.doesNotMatch(e3off[0], /[?&]prompt=/);
+    assert.doesNotMatch(e3off[0], /[?&]login_hint=/);
+  });
+  await check("the control site still gets the global default", () => {
+    assert.equal(e3ctl.length, 1, `saw ${e3ctl.length}: ${e3ctl.join(" | ")}`);
+    assert.match(e3ctl[0], /[?&]prompt=select_account(&|$)/);
+  });
+
+  console.log("\nE4 — mirror configuration: global hint, site picker");
+  await configure({
+    enabled: true,
+    mode: "hint",
+    upn: UPN,
+    sites: [{ domain: SITE_A, mode: "picker" }],
+  });
+  const e4 = authorizeOnly(await navigate(devtoolsPort, authorizeFor(SITE_A)));
+  await check("one request with prompt only — no oscillation", () => {
+    assert.equal(e4.length, 1, `saw ${e4.length}: ${e4.join(" | ")}`);
+    assert.match(e4[0], /[?&]prompt=select_account(&|$)/);
+    assert.doesNotMatch(e4[0], /[?&]login_hint=/);
+  });
+
+  console.log("\nE5 — A1 holds under the per-site model");
+  const beforeFramedSite = seen.length;
+  await navigate(devtoolsPort, "https://portal.test/iframe?site");
+  const e5 = authorizeOnly(seen.slice(beforeFramedSite));
+  await check("an iframe request matching a site rule is still not touched", () => {
+    assert.equal(e5.length, 1, `saw ${e5.length}: ${e5.join(" | ")}`);
+    assert.match(e5[0], /[?&]prompt=none(&|$)/);
+    assert.doesNotMatch(e5[0], /select_account/);
+    assert.doesNotMatch(e5[0], /login_hint/);
+  });
+
+  console.log("\nE6 — Chromium accepts every generated pattern");
+  await configure({
+    enabled: true,
+    mode: "picker",
+    upn: UPN,
+    sites: [
+      { domain: SITE_A, mode: "hint" },
+      { domain: SITE_B, mode: "off" },
+      { domain: "third.example.com", mode: "picker" },
+    ],
+  });
+  await check("three sites produce base + 3 guards + 2 injections = 6 rules", async () => {
+    assert.equal((await rules()).length, 6);
+  });
+  await check("isRegexSupported says yes for every registered regexFilter", async () => {
+    const verdicts = await cdp.evaluate(`
+      chrome.declarativeNetRequest.getDynamicRules().then((rs) =>
+        Promise.all(rs.map((r) =>
+          chrome.declarativeNetRequest
+            .isRegexSupported({ regex: r.condition.regexFilter, isCaseSensitive: false, requireCapturing: false })
+            .then((v) => ({ id: r.id, ok: v.isSupported, reason: v.reason })))))
+    `);
+    const bad = verdicts.filter((v) => !v.ok);
+    assert.equal(bad.length, 0, JSON.stringify(bad));
+  });
+
+  console.log("\nE7 — a broken stored domain must not disarm the extension");
+  await configure({
+    enabled: true,
+    mode: "picker",
+    upn: UPN,
+    sites: [
+      { domain: "a|b", mode: "picker" }, // would match nearly every authorize URL
+      { domain: SITE_A, mode: "off" },
+    ],
+  });
+  await check("base rule and the good site survive the bad entry", async () => {
+    const registered = await rules();
+    assert.equal(registered.length, 2, JSON.stringify(registered.map((r) => r.id)));
+    assert.equal(registered[0].id, 1);
+  });
+
+  console.log("\nE9 — two saves in quick succession converge on the last one");
+  await cdp.evaluate(`
+    chrome.storage.local.set({ enabled: true, mode: "picker", upn: "${UPN}", sites: [
+      { domain: "${SITE_A}", mode: "hint" }, { domain: "${SITE_B}", mode: "off" }] });
+    chrome.storage.local.set({ enabled: true, mode: "picker", upn: "${UPN}", sites: [
+      { domain: "${SITE_A}", mode: "off" }] });
+  `);
+  await sleep(800);
+  await check("the rule set matches the second write, not the first", async () => {
+    const registered = await rules();
+    assert.equal(registered.length, 2, JSON.stringify(registered.map((r) => r.id)));
+    assert.deepEqual(registered[1].action, { type: "allow" });
+  });
+
   // The options page is the only configuration path in production. A broken save
   // means a silently inert extension, which looks like nothing at all.
   console.log("\nOptions page — the only configuration path");
+  // Start from an empty profile: the preceding block left site rules behind, and
+  // these checks assert on exact rule counts.
+  await cdp.evaluate("chrome.storage.local.clear()");
+  await sleep(300);
   const extId = sw.url.split("/")[2];
   const tab = await fetch(
     `http://127.0.0.1:${devtoolsPort}/json/new?${encodeURIComponent(`chrome-extension://${extId}/options/options.html`)}`,

@@ -5,25 +5,33 @@
 // no remote code, no telemetry, no message listeners from web pages — every one
 // of those is a finding in the security review.
 
-import { buildRules, RULE_ID } from "../lib/rules.js";
+import { buildRules } from "../lib/rules.js";
 
-/** The configuration keys the options page writes. Read explicitly, so the shape is visible here. */
-const STORAGE_KEYS = ["enabled", "mode", "upn"];
+/** The configuration keys the UI writes. Read explicitly, so the shape is visible here. */
+const STORAGE_KEYS = ["enabled", "mode", "upn", "sites"];
 
 /**
  * Replaces the dynamic rule set with whatever the current configuration yields.
  *
- * Removing RULE_ID unconditionally is what makes this idempotent: an empty or
- * deactivated configuration ends with zero rules registered (A3). Remove and add
- * travel in ONE call — a separate remove followed by an add would leave a window
- * in which the old rule is gone and the new one is not there yet.
+ * The rule count is variable (one base rule plus a pair per configured site), so
+ * a fixed removal list no longer suffices. Removing the union of what is
+ * currently registered and what is about to be added makes the call idempotent
+ * and, more importantly, safe against two saves racing: without the union the
+ * second call computes its removal list from a stale snapshot, tries to add an
+ * id the first call already added, and Chromium rejects the WHOLE batch — which
+ * would leave the profile with no rules at all and no error anywhere.
+ *
+ * Remove and add travel in ONE call. A separate remove followed by an add would
+ * leave a window in which the old rules are gone and the new ones are not there.
  */
 async function syncRules() {
   const config = await chrome.storage.local.get(STORAGE_KEYS);
-  await chrome.declarativeNetRequest.updateDynamicRules({
-    removeRuleIds: [RULE_ID],
-    addRules: buildRules(config),
-  });
+  const addRules = buildRules(config);
+  const existing = await chrome.declarativeNetRequest.getDynamicRules();
+  const removeRuleIds = [
+    ...new Set([...existing.map((rule) => rule.id), ...addRules.map((rule) => rule.id)]),
+  ];
+  await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds, addRules });
 }
 
 // Covers first install and every extension update — an update may change the
