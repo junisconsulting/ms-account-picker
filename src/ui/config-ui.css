@@ -96,6 +96,7 @@ body {
 .row input { margin: 2px 0 0; flex: none; accent-color: var(--accent); }
 .row .grow { display: flex; flex-direction: column; }
 .row small, .hint { color: var(--muted); font-size: 11.5px; }
+.hint code { font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .fld { font-weight: 600; font-size: 12px; }
 

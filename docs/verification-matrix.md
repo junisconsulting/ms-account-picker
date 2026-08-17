@@ -15,6 +15,26 @@ Diese vier Annahmen tragen das Design. Sie sind manuell und einmalig — solange
 | V3 | `login_hint` überschreibt einen PRT für einen **anderen** User | Manuell, wie beim `select_account`-Test | `login_hint`-Modus entfällt ersatzlos, Picker bleibt einziger Modus |
 | ~~V4~~ ✅ | `host_permissions` auf `login.microsoftonline.com` reicht für den Redirect aus | **Belegt 2026-08-17 durch `tests/e2e/dnr.e2e.js`** — die Regel greift auch bei Navigation von einem fremden Origin ohne Host-Permission. Das Abbruchkriterium aus `security-review.md` §4 ist damit vorerst abgewendet | — |
 
+### V5 ✅ — Trägt die Portal-Domain im `redirect_uri`? *(belegt 2026-08-17)*
+
+Grundlage der Per-Site-Regeln (`architecture.md` §4.2). Geprüft an echten Authorize-Requests aus dem Zielumfeld.
+
+| Portal | Endpunkt | Tenant-Segment | Domain im `redirect_uri` |
+| --- | --- | --- | --- |
+| Azure | **v2** `/oauth2/v2.0/authorize` | `/organizations/` | `portal.azure.com` ✅ |
+| Defender | **v1** `/oauth2/authorize` | `/common/` | `security.microsoft.com` ✅ |
+| Power Automate | **v2** `/oauth2/v2.0/authorize` | `/organizations/` | `make.powerautomate.com` ✅ |
+
+Drei Nebenergebnisse, die mehr wert sind als das Hauptergebnis:
+
+- **A6 ist nicht theoretisch.** Defender nutzt tatsächlich den v1-Endpunkt. Hätte die Regel nur v2 abgedeckt, wäre ein Portal im Zielumfeld stumm ungeschützt geblieben.
+- **A5 bestätigt.** Zwei Portale nutzen `/organizations/`, eines `/common/` — das variable Tenant-Segment ist Pflicht, keine Vorsichtsmaßnahme.
+- **Der `redirect_uri=`-Anker trägt.** Azure führt `management.core.windows.net` percent-encodiert im `scope`-Parameter, *vor* dem `redirect_uri`. Ohne den Anker hätte eine Site-Regel für diesen Host fälschlich gegriffen.
+
+Als Regressionstest festgeschrieben in `tests/unit/rules.test.js` („the site condition works on the real shape of the target portals") — mit Platzhaltern für Client-IDs, `state` und `nonce`, erhalten bleibt nur die Struktur.
+
+**Grenzen, die daraus folgen und dokumentiert bleiben müssen:** Die Konfiguration ist ein **exakter Host-Vergleich**. `azure.com` deckt `portal.azure.com` nicht ab. Portale, die sich einen `redirect_uri`-Host teilen, sind nicht unterscheidbar. Portale, deren `redirect_uri`-Host nicht der aufgerufene Host ist, fallen durch — bei den drei geprüften ist das nicht der Fall, bei ungeprüften ist es offen.
+
 ## 1. Automatisiert abgedeckt (nicht Teil dieser Matrix)
 
 **Unit** (`tests/unit/`, läuft im Verify-Gate):
@@ -81,6 +101,8 @@ Eintrag pro Zelle: `A✓ B✓ C✓` oder die konkrete Abweichung. Kein `n/a` ohn
 
 | Datum | Extension-Version | Edge-Version | Umfang | Ergebnis | Durchgeführt von |
 | --- | --- | --- | --- | --- | --- |
+| 2026-08-17 | 0.1.0 | _nachzutragen_ | **V5** — Authorize-Requests von Azure, Defender, Power Automate auf die Domain im `redirect_uri` geprüft | 🟢 alle drei tragen sie. Nebenbefund: Defender nutzt den v1-Endpunkt, `/common/` und `/organizations/` kommen beide vor | D. H. + Claude |
+| 2026-08-17 | 0.1.0 | n/a (Chrome 152 headless) | E2E erweitert: Per-Site-Modell E1–E9, Konfigurations-UI auf **beiden** Oberflächen | grün, 38/38 | Claude, automatisiert |
 | 2026-08-17 | 0.0.0 (unpacked) | _nachzutragen_ | E2E gegen lokalen Fake-Endpunkt: Z3, V4, A1-Mechanismus, A3, Z5, Options-Seite | grün, 14/14 | Claude, automatisiert |
 | 2026-08-17 | 0.0.0 (unpacked) | _nachzutragen_ | **V2** — Device Claim im Sign-in-Log, Picker- **und** Hint-Modus | 🟢 `deviceDetail.deviceId` gefüllt, beide Modi | D. H. |
 

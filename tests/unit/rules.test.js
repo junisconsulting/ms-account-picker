@@ -224,6 +224,68 @@ test("siteRegexFilter does not match neighbouring hosts or other parameters", ()
   }
 });
 
+test("the site condition works on the real shape of the target portals", () => {
+  // Captured from live authorize requests on 2026-08-17 (matrix V5) and reduced
+  // to placeholders: client ids, state, nonce and code_challenge carry nothing
+  // this test needs. What is preserved is the STRUCTURE, and each of these three
+  // shapes has caught something:
+  //
+  //   Azure          a percent-encoded https URL inside `scope`, BEFORE
+  //                  redirect_uri — the false-positive trap
+  //   Defender       the v1 endpoint and /common/, plus a `state` full of %3D.
+  //                  A6 is not theoretical: a real portal in the target
+  //                  environment still uses /oauth2/authorize
+  //   Power Automate redirect_uri as a bare host plus one path segment
+  const PORTALS = {
+    "portal.azure.com":
+      "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize" +
+      "?client_id=00000000-0000-0000-0000-000000000000" +
+      "&scope=https%3A%2F%2Fmanagement.core.windows.net%2F%2F.default%20openid%20profile" +
+      "&redirect_uri=https%3A%2F%2Fportal.azure.com%2Fauth%2Flogin%2F" +
+      "&response_mode=fragment&nonce=n&state=s&response_type=code&code_challenge_method=S256",
+    "security.microsoft.com":
+      "https://login.microsoftonline.com/common/oauth2/authorize" +
+      "?client_id=00000000-0000-0000-0000-000000000000&response_type=code%20id_token" +
+      "&scope=openid%20profile&state=OpenIdConnect.AuthenticationProperties%3DAbCdEf" +
+      "&response_mode=form_post&nonce=n" +
+      "&redirect_uri=https%3A%2F%2Fsecurity.microsoft.com%2F&x-client-SKU=ID_NET472",
+    "make.powerautomate.com":
+      "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize" +
+      "?client_id=00000000-0000-0000-0000-000000000000&scope=openid%20profile%20offline_access" +
+      "&redirect_uri=https%3A%2F%2Fmake.powerautomate.com%2Fauth" +
+      "&response_mode=fragment&nonce=n&state=s&response_type=code",
+  };
+
+  const base = new RegExp(AUTHORIZE_REGEX, "i");
+  for (const [domain, url] of Object.entries(PORTALS)) {
+    assert.ok(base.test(url), `base rule must match ${domain}`);
+  }
+
+  // Each site pattern must hit its own portal and no other.
+  for (const [domain, ownUrl] of Object.entries(PORTALS)) {
+    const re = new RegExp(siteRegexFilter(domain), "i");
+    assert.ok(re.test(ownUrl), `${domain} must match its own authorize URL`);
+    for (const [other, otherUrl] of Object.entries(PORTALS)) {
+      if (other === domain) continue;
+      assert.ok(!re.test(otherUrl), `${domain} must not match ${other}`);
+    }
+  }
+
+  // A host that appears in `scope` but not in redirect_uri must not match. This
+  // is what the redirect_uri= anchor is for.
+  assert.ok(
+    !new RegExp(siteRegexFilter("management.core.windows.net"), "i").test(PORTALS["portal.azure.com"]),
+    "a host inside scope must not be treated as the portal",
+  );
+
+  // Configuration is an exact host match, never a suffix: "azure.com" does not
+  // stand in for "portal.azure.com". The UI says so, and this pins it down.
+  assert.ok(
+    !new RegExp(siteRegexFilter("azure.com"), "i").test(PORTALS["portal.azure.com"]),
+    "a parent domain must not match a subdomain",
+  );
+});
+
 // --- per-site rule sets -----------------------------------------------------
 
 test("an 'off' site gets a guard and nothing else", () => {

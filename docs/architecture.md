@@ -76,6 +76,26 @@ condition.regexFilter    = ^https://login\.microsoftonline\.com/[^/]+/oauth2/(?:
 condition.resourceTypes  = ["main_frame"]
 ```
 
+### 4.2 Per-Site-Regeln
+
+Ein globaler Default plus Ausnahmen pro Portal. Drei Prioritätsbänder:
+
+| Band | Priority | Regel | Wann |
+| --- | --- | --- | --- |
+| Basis | 1 | breite Authorize-Regex → globaler Default-Parameter | aktiviert |
+| Site-Sperre | 2 | Site-Regex → `action: "allow"` | für **jede** konfigurierte Site |
+| Site-Injektion | 3 | **identische** Site-Regex → Parameter dieser Site | Site-Modus ≠ `off` |
+
+**Woran das Portal erkannt wird.** Nicht am Initiator: `condition.initiatorDomains` ist hier unbrauchbar, weil eine browser-initiierte Navigation — getippte URL, Bookmark, Verlauf — **keinen** Initiator hat und ein HTTP-302 den *ursprünglichen* Initiator behält, nicht das umleitende Portal (Chromium-Quelle `url_pattern_index.cc`, `navigation_params.mojom`). Eine Filterung darüber würde sporadisch funktionieren, was schlimmer ist als gar nicht.
+
+Stattdessen steht die Portal-Domain bereits in der Authorize-URL: percent-encodiert im `redirect_uri`. Belegt für drei Portale des Zielumfelds → `verification-matrix.md` V5, samt der Grenzen dieser Heuristik.
+
+**Warum die Sperrregel auf die Site-Bedingung matcht und nicht auf den injizierten Parameter.** Die p2-Bedingung erwähnt den Parameter nicht und matcht deshalb vor und nach der Injektion identisch. Damit ist das Modell korrekt, unabhängig davon, wie Chromium eine wirkungslose Regel behandelt.
+
+Gemessen (2026-08-17): **Chromium fällt nicht durch.** Ohne Sperrregel bleibt E1 grün — nach einer Regel, deren Redirect eine identische URL ergäbe, wird abgebrochen, die Basisregel kommt nicht mehr zum Zug. Die Sperre ist damit für `picker`/`hint`-Sites redundant und für `off`-Sites tragend. Sie bleibt für beide: ein T0-Pfad darf nicht auf undokumentiertem Verhalten ruhen, das ein Browser-Update still ändern kann.
+
+**Verworfen:** `removeParams`, damit sich Basis- und Site-Regel gegenseitig ausschließen. Das oszilliert — die Basis setzt den Parameter, die Site-Regel entfernt ihn, und der Flow endet in `ERR_TOO_MANY_REDIRECTS`. Steht als benannte Falle in `dnr-rule-check`.
+
 ## 5. Harte technische Randbedingungen
 
 Die verbindliche Fassung steht in `CLAUDE.md` (A1–A10). Hier die Begründungen:

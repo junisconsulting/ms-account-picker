@@ -68,7 +68,9 @@ const TEMPLATE = `
 
   <h2>Exceptions per site</h2>
   <small class="hint">Some sites are used by admins and everyone else — those usually want the
-    picker even when direct sign-in is the default.</small>
+    picker even when direct sign-in is the default. Enter the exact host you open,
+    like <code>make.powerautomate.com</code>; a parent domain does not cover its
+    subdomains.</small>
   <ul class="sites" id="site-list"></ul>
   <div class="addrow">
     <input type="text" id="site-domain" autocomplete="off" spellcheck="false"
