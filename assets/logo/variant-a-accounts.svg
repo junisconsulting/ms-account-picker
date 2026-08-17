@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>MS Account Picker — Variant A: two accounts, the chosen one in front</title>
+  <!-- Two account discs. The workforce identity sits behind; the admin account
+       is in front, in junis yellow, carrying the check. Reads as "this one". -->
+  <circle cx="192" cy="256" r="128" fill="#061838"/>
+  <circle cx="332" cy="256" r="128" fill="#fcd218"/>
+  <path d="M296 260 l28 30 l56 -70" fill="none" stroke="#061838"
+        stroke-width="42" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>MS Account Picker — Variant D: two people, the chosen one in front</title>
+  <!-- Group glyph with depth: the workforce identity stands behind, the admin
+       account steps forward in junis yellow. The picker, as a picture. -->
+  <g fill="#061838">
+    <circle cx="182" cy="214" r="58"/>
+    <path d="M92 396 A90 90 0 0 1 272 396 Z"/>
+  </g>
+  <g fill="#fcd218">
+    <circle cx="322" cy="196" r="74"/>
+    <path d="M204 396 A118 118 0 0 1 440 396 Z"/>
+  </g>
+</svg>

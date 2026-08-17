@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>MS Account Picker — Variant B: the switch, yellow branch taken</title>
+  <!-- One sign-in comes in, two accounts are possible, the yellow branch is the
+       one taken. Closest to the junis arc language without copying the mark. -->
+  <path d="M256 462 L256 296" fill="none" stroke="#061838"
+        stroke-width="66" stroke-linecap="round"/>
+  <path d="M256 300 C256 196 184 168 124 150" fill="none" stroke="#061838"
+        stroke-width="66" stroke-linecap="round"/>
+  <path d="M256 300 C256 196 328 168 388 150" fill="none" stroke="#fcd218"
+        stroke-width="66" stroke-linecap="round"/>
+</svg>
