@@ -71,12 +71,12 @@ export function isValidUpn(upn) {
  *
  *   Invalid pattern -> Chromium rejects the ENTIRE rule batch, base rule
  *   included. The extension then registers nothing at all and fails silently
- *   open: the admin is signed in with the workforce PRT again and nothing says
- *   why. One bad character in a text field reaches this.
+ *   open: the browser signs the user in with whatever account it already knows,
+ *   and nothing says why. One bad character in a text field reaches this.
  *
  *   Over-wide pattern -> an unescaped `.` matches any character, a `|` matches
- *   practically every authorize URL. For a hint site that means the EADM UPN
- *   lands in authorize requests of unrelated portals.
+ *   practically every authorize URL. For a hint site that means the configured
+ *   UPN lands in authorize requests of unrelated portals.
  *
  * Deliberately stricter than DNS: lowercase LDH labels, at least two of them,
  * no scheme, no port, no path, no wildcard.

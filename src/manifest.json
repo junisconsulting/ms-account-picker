@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "MS Account Picker",
   "version": "0.1.0",
-  "description": "Puts admins on their admin account instead of the one Windows signed them into, per Microsoft site.",
+  "description": "Choose which Microsoft account you sign in with, per site, instead of being signed in automatically.",
   "minimum_chrome_version": "120",
   "permissions": [
     "declarativeNetRequest",

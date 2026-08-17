@@ -4,7 +4,7 @@
 //
 // SECURITY RULE FOR THIS FILE: the single innerHTML assignment below writes a
 // static template with no interpolation of any kind. Every dynamic value — above
-// all a stored domain, which is admin-supplied text — reaches the DOM through
+// all a stored domain, which is user-supplied text — reaches the DOM through
 // textContent or a form property, never through concatenated markup.
 //
 // isValidUpn and isValidDomain are imported from the rule builder rather than
@@ -28,7 +28,7 @@ const TEMPLATE = `
   <img class="logo" src="../icons/icon-48.png" alt="">
   <div class="hdr-text">
     <h1>MS Account Picker</h1>
-    <p class="sub">Puts you on your admin account instead of the one Windows signed you into.</p>
+    <p class="sub">Choose the Microsoft account you sign in with, instead of being signed in automatically.</p>
   </div>
   <span class="ver" id="version"></span>
 </header>
@@ -60,14 +60,14 @@ const TEMPLATE = `
     </span>
   </label>
 
-  <label class="fld" for="upn">Admin account</label>
+  <label class="fld" for="upn">Account to sign in with</label>
   <input type="email" id="upn" autocomplete="off" spellcheck="false"
-         placeholder="admin@contoso.onmicrosoft.com">
+         placeholder="you@contoso.onmicrosoft.com">
   <small class="hint">Used by direct sign-in. It is written into the sign-in URL, so it also
     appears in browser history and proxy logs.</small>
 
   <h2>Exceptions per site</h2>
-  <small class="hint">Some sites are used by admins and everyone else — those usually want the
+  <small class="hint">Some sites you use with more than one account — those usually want the
     picker even when direct sign-in is the default. Enter the exact host you open,
     like <code>make.powerautomate.com</code>; a parent domain does not cover its
     subdomains.</small>
@@ -172,7 +172,7 @@ export function renderConfigUi(host) {
   function reportEffect() {
     if (!config.enabled) return report("Inactive in this profile.");
     if (config.mode === "hint" && !isValidUpn(config.upn)) {
-      return report("Direct sign-in needs a valid admin account — no rule is active.", "warn");
+      return report("Direct sign-in needs a valid account — no rule is active.", "warn");
     }
     const exceptions = config.sites.length;
     report(
@@ -186,7 +186,7 @@ export function renderConfigUi(host) {
     siteList.replaceChildren();
     config.sites.forEach((site, index) => {
       const row = rowTemplate.content.firstElementChild.cloneNode(true);
-      // textContent, never markup: the domain is admin-supplied text.
+      // textContent, never markup: the domain is user-supplied text.
       row.querySelector(".dom").textContent = site.domain;
       const mode = row.querySelector(".mode");
       mode.value = site.mode;
