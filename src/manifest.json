@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "MS Account Picker",
+  "version": "0.0.0",
+  "description": "Adds prompt=select_account or login_hint to Microsoft OAuth authorize requests so admins land on their EADM account.",
+  "minimum_chrome_version": "120",
+  "permissions": [
+    "declarativeNetRequest",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://login.microsoftonline.com/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": false
+  }
+}

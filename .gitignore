@@ -1,0 +1,18 @@
+# Build artifacts
+build/*
+!build/.gitkeep
+
+# Signing keys — never, under any circumstance
+*.pem
+*.p12
+*.key
+
+# Packaged extensions
+*.crx
+*.zip
+
+node_modules/
+.DS_Store
+
+# Source briefing — contains customer-identifying values, stays local
+briefing.md

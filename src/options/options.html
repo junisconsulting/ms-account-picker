@@ -1,0 +1,45 @@
+<!doctype html>
+<!--
+  Options page: the only UI this extension has. Captures the EADM UPN and the
+  operating mode, writes them to chrome.storage.local. No inline scripts (MV3
+  CSP forbids them), no remote fonts or stylesheets.
+
+  PHASE 1 PLACEHOLDER — markup skeleton only, no styling and no behaviour.
+
+  This page is the ONLY configuration source (decided, docs/open-questions.md
+  F3): the admin enters the UPN once and it is persisted in chrome.storage.local.
+  No policy pre-fill, no chrome.storage.managed — deliberately, because the
+  EADM naming differs per customer.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>MS Account Picker — Options</title>
+  </head>
+  <body>
+    <h1>MS Account Picker</h1>
+
+    <!-- The activation gate (A3). Unchecked by default and per profile: an
+         untouched profile registers no rule at all. Doubles as the kill switch
+         for hint mode, where no other account is reachable while active. -->
+    <label>
+      <input id="enabled" type="checkbox" />
+      Active in this profile
+    </label>
+
+    <fieldset>
+      <legend>Mode</legend>
+      <label><input type="radio" name="mode" value="picker" checked /> Account picker (prompt=select_account) — default</label>
+      <label><input type="radio" name="mode" value="hint" /> Direct sign-in (login_hint) — no other account reachable while active</label>
+    </fieldset>
+
+    <!-- Only used in hint mode; picker mode needs no UPN. -->
+    <label for="upn">EADM UPN</label>
+    <input id="upn" type="email" autocomplete="off" placeholder="admin@contoso.onmicrosoft.com" />
+
+    <button id="save" type="button">Save</button>
+    <p id="status" role="status"></p>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>
