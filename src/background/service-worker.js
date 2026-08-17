@@ -5,30 +5,37 @@
 // no remote code, no telemetry, no message listeners from web pages — every one
 // of those is a finding in the security review.
 
-// PHASE 1 PLACEHOLDER — no productive code yet.
-
 import { buildRules, RULE_ID } from "../lib/rules.js";
+
+/** The configuration keys the options page writes. Read explicitly, so the shape is visible here. */
+const STORAGE_KEYS = ["enabled", "mode", "upn"];
 
 /**
  * Replaces the dynamic rule set with whatever the current configuration yields.
- * Removing RULE_ID unconditionally is what makes this idempotent: an empty
- * configuration ends with zero rules registered (A3).
+ *
+ * Removing RULE_ID unconditionally is what makes this idempotent: an empty or
+ * deactivated configuration ends with zero rules registered (A3). Remove and add
+ * travel in ONE call — a separate remove followed by an add would leave a window
+ * in which the old rule is gone and the new one is not there yet.
  */
 async function syncRules() {
-  // TODO Phase 2: implement.
-  //   const config = await chrome.storage.local.get(...);
-  //   await chrome.declarativeNetRequest.updateDynamicRules({
-  //     removeRuleIds: [RULE_ID],
-  //     addRules: buildRules(config),
-  //   });
-  // Both arms in ONE call — a separate remove+add leaves a window in which the
-  // old rule is gone and the new one is not there yet.
-  void buildRules;
-  void RULE_ID;
+  const config = await chrome.storage.local.get(STORAGE_KEYS);
+  await chrome.declarativeNetRequest.updateDynamicRules({
+    removeRuleIds: [RULE_ID],
+    addRules: buildRules(config),
+  });
 }
 
-// TODO Phase 2: wire up
-//   chrome.runtime.onInstalled  -> syncRules()  (also covers browser start)
-//   chrome.storage.onChanged    -> syncRules()  (options page wrote a change)
-// No other listeners.
-void syncRules;
+// Covers first install and every extension update — an update may change the
+// rule shape, so the old rule must not survive it.
+chrome.runtime.onInstalled.addListener(syncRules);
+
+// The options page is the only writer. Dynamic rules persist across browser
+// restarts on their own, so there is deliberately no onStartup listener.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local") syncRules();
+});
+
+// ponytail: no catch. An update that Chromium rejects (bad regex, bad rule
+// shape) surfaces as an unhandled rejection in the service worker console,
+// which is exactly where the load check looks. A wrapper would only reword it.

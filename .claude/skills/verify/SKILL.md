@@ -59,6 +59,16 @@ The gate proves the files parse. It does not prove Edge accepts them.
    ```
    In a profile that was never activated this must return `[]` (constraint A3). After activation it must return exactly one rule.
 
+5. Arming without the options page — useful until it exists, and the fastest way
+   to reach the matrix checks that need a live rule (V4, Z3):
+   ```js
+   chrome.storage.local.set({ enabled: true, mode: "picker" })          // picker
+   chrome.storage.local.set({ enabled: true, mode: "hint", upn: "…" })  // hint
+   chrome.storage.local.clear()                                         // back to inert
+   ```
+   `storage.onChanged` triggers the sync, so `getDynamicRules()` reflects the change
+   immediately. Use a **test tenant** UPN here, never a production EADM.
+
 ## 3. DNR rule check (when `src/lib/rules.js` or a rule condition changed)
 
 Run the `dnr-rule-check` skill. It is the static counterpart to the matrix: RE2 compatibility, `resourceTypes`, loop risk, endpoint coverage (v1/v2/aliases).
