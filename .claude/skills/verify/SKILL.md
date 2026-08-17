@@ -69,6 +69,23 @@ The gate proves the files parse. It does not prove Edge accepts them.
    `storage.onChanged` triggers the sync, so `getDynamicRules()` reflects the change
    immediately. Use a **test tenant** UPN here, never a production EADM.
 
+## 2b. E2E against the fake endpoint (when rule logic changed)
+
+```bash
+node tests/e2e/dnr.e2e.js       # ~30 s, exit 0 = green
+```
+
+Needs a Chrome binary (`CHROME_BIN`, or the puppeteer cache under
+`~/.cache/puppeteer/chrome/*/chrome-linux64/chrome`) and `openssl`. Deliberately
+**not** part of the gate — it is slow and needs a browser.
+
+It maps `login.microsoftonline.com` onto a local HTTPS server via
+`--host-resolver-rules`, so the production rule runs against a fake endpoint with
+nothing stubbed inside the extension. Covers Z3 (no loop), V4 (cross-origin
+initiator), A1 (iframe untouched), A3, and the v1 endpoint.
+
+Two things it cannot do: prove anything about real ESTS, and replace step 4.
+
 ## 3. DNR rule check (when `src/lib/rules.js` or a rule condition changed)
 
 Run the `dnr-rule-check` skill. It is the static counterpart to the matrix: RE2 compatibility, `resourceTypes`, loop risk, endpoint coverage (v1/v2/aliases).
@@ -95,5 +112,5 @@ Any change to `permissions`, `host_permissions`, or `declarative_net_request` �
 ## Out of scope
 
 - No linter, no formatter, no type checker exists in this project — do not invent one.
-- No E2E automation yet (`tests/e2e/` is empty by design). Puppeteer against a real ESTS login is not a test, it is a credential leak waiting to happen. Decide before building it.
+- E2E never touches real ESTS. `tests/e2e/dnr.e2e.js` drives a loaded extension against a local fake endpoint; a test that signs in for real would be a credential leak waiting to happen. Keep it that way.
 - Over-engineering review (`/ponytail-review`) is deliberately not part of verify — it is a pre-commit judgment pass on the final diff, not a pass/fail check.

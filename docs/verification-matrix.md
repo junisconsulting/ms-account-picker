@@ -13,16 +13,32 @@ Diese vier Annahmen tragen das Design. Sie sind manuell und einmalig — solange
 | V1 | `prompt=select_account` **plus** `login_hint` wählt das EADM im Picker vor | Authorize-URL eines Portals von Hand um beide Parameter ergänzen, aufrufen | Keine — es bleibt beim Picker ohne Vorauswahl (`open-questions.md` F1). Bei positiv: beide Anforderungen erfüllt, Modus-Design vereinfacht sich |
 | V2 🔴 | Device Claim (`deviceDetail.deviceId`) bleibt bei `prompt`/`login_hint` erhalten | Anmelden, dann Entra Sign-in-Log → Eintrag → `deviceDetail.deviceId` | Die Device-Claim-CA blockt im Erzwingungsmodus → Projekt trägt nicht. **Ein erfolgreicher Sign-in beweist das nicht**, solange sie report-only ist |
 | V3 | `login_hint` überschreibt einen PRT für einen **anderen** User | Manuell, wie beim `select_account`-Test | `login_hint`-Modus entfällt ersatzlos, Picker bleibt einziger Modus |
-| V4 | `host_permissions` auf `login.microsoftonline.com` reicht für den Redirect aus | Extension laden, Regel greift ohne weitere Hosts | Initiator-Domains nötig → Governance-Neubewertung, siehe `security-review.md` §4 (Abbruchkriterium) |
+| ~~V4~~ ✅ | `host_permissions` auf `login.microsoftonline.com` reicht für den Redirect aus | **Belegt 2026-08-17 durch `tests/e2e/dnr.e2e.js`** — die Regel greift auch bei Navigation von einem fremden Origin ohne Host-Permission. Das Abbruchkriterium aus `security-review.md` §4 ist damit vorerst abgewendet | — |
 
 ## 1. Automatisiert abgedeckt (nicht Teil dieser Matrix)
 
-Diese vier gehören in `tests/unit/` und laufen im Verify-Gate:
+**Unit** (`tests/unit/`, läuft im Verify-Gate):
 
 - UPN → DNR-Regel-Objekt (fester Input, festes erwartetes Objekt)
 - RE2-Kompatibilität des generierten `regexFilter`
 - kein `resourceTypes` außer `main_frame`
 - leere Konfiguration → keine Regel
+
+**E2E** (`tests/e2e/dnr.e2e.js`, geladene Extension gegen einen lokalen Fake-Endpunkt):
+
+`--host-resolver-rules` zeigt den echten Hostnamen `login.microsoftonline.com` auf einen lokalen HTTPS-Server. DNR matcht auf die URL, nicht auf DNS — die getestete Regel ist damit die Produktivregel, nichts ist in der Extension gestubbt. Kein Kontakt zu Microsoft, keine Credentials.
+
+| Abgedeckt | Aussage |
+| --- | --- |
+| **Z3** | Chromium führt einen Redirect auf eine identische URL nicht aus → kein Loop. Belegt, nicht mehr unterstellt |
+| **V4** | Die Regel greift auch bei Navigation von einem fremden Origin, für das keine `host_permissions` bestehen |
+| **A1** (Mechanismus) | Ein `authorize`-Request im iframe wird nicht angefasst — `prompt=none` kommt unverändert an |
+| **A3** | Frisches Profil → keine Regel; nach `storage.local.clear()` wieder keine |
+| **Z5** | v1-Endpunkt (`/oauth2/authorize`) greift |
+| Regelakzeptanz | Chromium nimmt den `regexFilter` an (das kann kein Unit-Test beweisen) |
+| Parametertreue | Die Parameter des Portals überleben die Transformation unverändert |
+
+**Was die E2E ausdrücklich nicht beweist:** irgendetwas über das echte ESTS, den PRT oder den Device Claim. Der Endpunkt ist ein Attrappe. Z1 (Silent Token Renewal in realen Portalen) bleibt manuell — die E2E zeigt nur, dass die Regel im iframe nicht greift, nicht dass die Token-Erneuerung insgesamt intakt ist.
 
 ## 2. Matrix: Portale × Zustände
 
@@ -54,7 +70,7 @@ Eintrag pro Zelle: `A✓ B✓ C✓` oder die konkrete Abweichung. Kein `n/a` ohn
 | --- | --- | --- |
 | Z1 🔴 | **Silent Token Renewal** — beliebiges M365-Portal offen lassen, Token-Lebensdauer überschreiten | Keine Re-Auth-Aufforderung, kein `interaction_required` in der Konsole. Bricht das, ist Constraint A1 verletzt |
 | Z2 🔴 | **Workforce-Profil-Regression** — dieselbe Extension, im Profil **nie aktiviert** | Keinerlei Verhaltensänderung. `getDynamicRules()` liefert `[]` |
-| Z3 | **Redirect-Loop** — Portal aufrufen, das selbst schon `prompt` setzt | Genau ein Redirect, kein `ERR_TOO_MANY_REDIRECTS` |
+| ~~Z3~~ ✅ | **Redirect-Loop** | **Belegt 2026-08-17 durch die E2E:** Chromium überspringt einen Redirect, der eine identische URL ergäbe. Manuell nur noch stichprobenhaft gegen ein echtes Portal |
 | Z4 | **Fremdtenant** (z. B. `<test-tenant>.onmicrosoft.com`) — im Picker-Default | Über die Kontoauswahl erreichbar, ohne Zutun |
 | Z4b | **Fremdtenant** — im `login_hint`-Opt-in | Nur über den Toggle in der Options-Seite erreichbar; nach Wiedereinschalten greift die Regel sofort wieder |
 | Z5 | **v1-Endpunkt** — Portal mit `/oauth2/authorize` (ohne `v2.0`) | Regel greift |

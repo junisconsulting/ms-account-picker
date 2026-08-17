@@ -22,9 +22,12 @@ Manifest-V3-Browser-Extension für Microsoft Edge. Sie ergänzt den OAuth-Author
 Kein Build-Step, keine Dependencies. Was in `src/` liegt, läuft im Browser.
 
 ```bash
-bash .claude/hooks/verify.sh   # Gate: manifest-JSON, node --check, Unit-Tests
+bash .claude/hooks/verify.sh       # Gate: manifest-JSON, node --check, Unit-Tests
 node --test tests/unit/*.test.js   # Unit-Tests einzeln
+node tests/e2e/dnr.e2e.js          # E2E: geladene Extension gegen lokalen Fake-Endpunkt
 ```
+
+Die E2E braucht ein Chrome-Binary (`CHROME_BIN` oder Puppeteer-Cache) und `openssl`. Sie ist bewusst nicht Teil des Gates — sie dauert ~30 s und braucht einen Browser. Kontakt zu Microsoft findet nicht statt: `--host-resolver-rules` zeigt `login.microsoftonline.com` auf einen lokalen Server, getestet wird trotzdem die Produktivregel.
 
 Extension laden: `edge://extensions` → Entwicklermodus → **Entpackte Erweiterung laden** → Verzeichnis `src/`.
 

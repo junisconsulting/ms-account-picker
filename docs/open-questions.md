@@ -51,7 +51,7 @@ Extension-Name „MS Account Picker". Allgemeiner und kundenunspezifischer als d
 
 `tests/e2e/` testet gegen einen lokalen Endpunkt, der die Form eines Authorize-Requests hat und die Regel triggert — **kein echter ESTS-Login, keine Credentials im Testlauf**. Beweist Regel-Registrierung, Parameter-Injektion und Redirect-Verhalten. Was das nicht beweist, bleibt Sache der Verifikationsmatrix.
 
-Offene Detailfrage für Phase 2: Der Dummy muss unter `login.microsoftonline.com` erreichbar sein, damit die Regel greift (Host-Mapping im Testlauf) — die Alternative wäre eine Testregel mit anderem Host, dann testet man aber nicht mehr die Produktivregel.
+Die damals offene Detailfrage — wie der Dummy unter den echten Hostnamen kommt — ist beantwortet: Chromes `--host-resolver-rules=MAP login.microsoftonline.com 127.0.0.1:<port>` plus `--ignore-certificate-errors` und ein selbstsigniertes Zertifikat, das pro Lauf erzeugt wird. Damit läuft die **Produktivregel** gegen einen lokalen Endpunkt, ohne dass in der Extension etwas gestubbt wäre. Umgesetzt in `tests/e2e/dnr.e2e.js` (2026-08-17).
 
 ### F7 — Endpunkt-Aliase → nicht abdecken *(2026-08-17)*
 
