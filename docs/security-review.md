@@ -1,57 +1,59 @@
-# Security Review — Klassifikation und Anforderungen
+# Security Review — Classification and Requirements
 
-> Verbindlich. Die operative Checkliste für einzelne Änderungen liegt in `.claude/skills/security-review/SKILL.md` und ist **blockierend**.
+> Binding. The operational checklist for individual changes lives in `.claude/skills/security-review/SKILL.md` and is **blocking**.
 
-## 1. Klassifikation: T0-Einflussweg
+## 1. Classification: T0 influence path
 
-Die Extension operiert **innerhalb des Authentifizierungsflusses** privilegierter Konten. Wer sie ausliefern oder aktualisieren kann, könnte statt `prompt` auch `redirect_uri` manipulieren — ein perfekt getarnter Token-Diebstahlpfad gegen genau die Population, die durch phishing-resistente Verfahren geschützt werden soll.
+The extension operates **inside the authentication flow** of privileged accounts. Whoever can ship or update it could manipulate `redirect_uri` instead of `prompt` — a perfectly camouflaged token-theft path against exactly the population that phishing-resistant methods are meant to protect.
 
-Damit ist die Build- und Auslieferungskette der Extension selbst ein T0-Asset. Sie ist nicht schwächer zu schützen als die Systeme, die sie beeinflusst.
+That makes the extension's own build and delivery chain a T0 asset. It must not be protected any less strongly than the systems it influences.
 
-## 2. Verbindliche Anforderungen
+## 2. Binding requirements
 
-1. Build- und Signaturkette auf demselben Schutzniveau wie die IDemFlow-Pipelines
-2. `host_permissions` minimal — idealerweise ausschließlich `https://login.microsoftonline.com/*`
-3. Kein Background-Script über den Rule-Sync hinaus, kein `fetch`, kein Remote Code, keine Telemetrie
-4. Review-Pflicht bei **jeder** Änderung an Regeln oder Permissions
-5. Reproduzierbarer Build; Artefakt-Hash dokumentiert (`deployment.md`)
-6. Gepinnte Version in der Deployment-Policy — kein Auto-Update ohne Freigabe
+1. Build and signing chain at the same protection level as the IDemFlow pipelines
+2. `host_permissions` minimal — ideally nothing but `https://login.microsoftonline.com/*`
+3. No background script beyond the rule sync, no `fetch`, no remote code, no telemetry
+4. A review is mandatory for **every** change to rules or permissions
+5. Reproducible build; artefact hash documented (`deployment.md`)
+6. Pinned version in the deployment policy — no auto-update without approval
 
-## 3. Angriffsflächen und Gegenmaßnahmen
+## 3. Attack surfaces and countermeasures
 
-| Fläche | Risiko | Gegenmaßnahme |
+| Surface | Risk | Countermeasure |
 | --- | --- | --- |
-| Regel-`action` | Umschreiben auf `redirect_uri` → Auth-Code landet beim Angreifer | Security-Review-Skill §2: nur `prompt`/`login_hint` in `addOrReplaceParams`, Ziel-Host == Request-Host |
-| `host_permissions` | Ausweitung auf Portal-Domains → Zugriff auf Session-tragende Requests | Erweiterung nur nach Rückfrage; siehe Abbruchkriterium |
-| Update-Kanal | Untergeschobene Version an alle Admin-Profile | Self-hosted `update_url` auf interner Infrastruktur, gepinnte Version, signierte CRX |
-| Service Worker | Nachladen von Code, Exfiltration des UPN | Kein `fetch`/`eval`/`chrome.scripting`; MV3-CSP; Review-Checkliste §3 |
-| Dependencies | Supply-Chain-Kompromittierung | Null Runtime-Dependencies. Jede Aufnahme ist eine explizite Entscheidung des Auftraggebers |
-| Repository | Signaturschlüssel oder echte Identifier im Klartext | `.gitignore` für `*.pem`/`*.crx`; keine echten UPNs/Tenant-IDs in Code, Tests, Docs, Commits |
+| Rule `action` | Rewritten to `redirect_uri` → the auth code lands with an attacker | Security-review skill §2: only `prompt`/`login_hint` in `addOrReplaceParams`, target host == request host |
+| `host_permissions` | Widened to portal domains → access to session-bearing requests | Widen only after asking; see the stop criterion |
+| Update channel | A substituted version pushed to all admin profiles | Pinned version, signed package. The delivery route itself is under revision — see `deployment.md` §1 |
+| Service worker | Loading code at runtime, exfiltrating the UPN | No `fetch`/`eval`/`chrome.scripting`; MV3 CSP; review checklist §3 |
+| Dependencies | Supply-chain compromise | Zero runtime dependencies. Adding one is an explicit decision by the client |
+| Repository | A signing key or real identifiers in the clear | `.gitignore` for `*.pem`/`*.crx`; no real UPNs or tenant IDs in code, tests, docs or commits |
 
-## 4. Abbruchkriterium 🔴
+## 4. Stop criterion 🔴
 
-Falls sich in Phase 2 zeigt, dass Host-Permissions auf die Portal-Domains (`portal.azure.com`, `security.microsoft.com`, …) nötig sind, ist die Risikobewertung **neu zu führen**. Das Projekt ist dann gegebenenfalls einzustellen.
+If it turns out that host permissions on the portal domains (`portal.azure.com`, `security.microsoft.com`, …) are needed, the risk assessment has to be **redone**. The project may then have to be discontinued.
 
-Begründung: Eine Extension mit Leserechten auf den Portal-Domains sieht die authentifizierten Sessions selbst, nicht mehr nur den Authorize-Request. Der Nutzen (Komfort beim Kontowechsel) rechtfertigt diese Fläche nicht.
+Reasoning: an extension with read access to the portal domains sees the authenticated sessions themselves, not merely the authorize request. The benefit — convenience when switching accounts — does not justify that surface.
 
-## 5. Datenschutz
+Status: not triggered. `host_permissions` on `login.microsoftonline.com` proved sufficient, including for navigations from a foreign origin (`verification-matrix.md` V4).
 
-Der EADM-UPN erscheint in jeder Authorize-URL → Browser-Historie, Proxy-Logs, ggf. `Referer`.
+## 5. Data protection
 
-Bewertung: **kein neuer Angriffsvektor** gegenüber den Sign-in-Logs, in denen derselbe UPN ohnehin steht — aber breitere Sichtbarkeit, insbesondere gegenüber Rollen mit Proxy-Log-Zugriff, die keinen Entra-Log-Zugriff haben.
+In `login_hint` mode the UPN appears in every authorize URL → browser history, proxy logs, possibly `Referer`.
 
-Konsequenz: benennen, nicht verschleiern. Eine Obfuskation des UPN in der URL wäre wirkungslos (ESTS braucht den Klartext) und würde die Nachvollziehbarkeit verschlechtern.
+Assessment: **not a new attack vector** compared with the sign-in logs, which contain the same UPN anyway — but broader visibility, in particular towards roles that have access to proxy logs without having access to Entra logs.
 
-Im Picker-Modus (`prompt=select_account`) entfällt dieser Punkt vollständig — der Parameter enthält keine Identität. Das ist ein Argument in Frage 1 der offenen Fragen.
+Consequence: name it, do not obscure it. Obfuscating the UPN in the URL would be ineffective (ESTS needs the clear text) and would make the flow harder to trace.
 
-## 6. Review-Historie
+In picker mode (`prompt=select_account`) this point does not arise at all — the parameter carries no identity. That is one of the arguments in F1 of the open questions.
 
-| Datum | Umfang | Ergebnis | Reviewer |
+## 6. Review history
+
+| Date | Scope | Result | Reviewer |
 | --- | --- | --- | --- |
-| 2026-08-17 | Phase-1-Scaffolding: neues `manifest.json`, Platzhalter in `src/` | Kein CRITICAL/HIGH. MEDIUM: kundenidentifizierende Werte im Repo → bereinigt (Tenant durch Platzhalter, Quelldokument gitignored). LOW: `minimum_chrome_version: 120` nicht gegen die Edge-Version der Zielflotte geprüft | Claude + D. H. |
-| 2026-08-17 | `src/lib/rules.js` — erste echte Regelbedingung, plus Unit-Tests | Kein CRITICAL/HIGH. LOW: `isValidUpn` lässt `+` und `;` durch — keine Injection möglich, aber ein `+` würde serverseitig zum Leerzeichen. Beim Load-Check prüfen, ob `queryTransform` kodiert | Claude + D. H. |
-| 2026-08-17 | Per-Site-Regeln: `src/lib/rules.js` (3-Band-Prioritätsmodell, `isValidDomain`), `src/background/service-worker.js` (Regel-ID-Vereinigung) | Kein CRITICAL/HIGH. MEDIUM: neue `.*`-Fläche im Site-Muster — hinter dem ESTS-Anker gebunden, als Unit-Invariante abgesichert. LOW: `%2E`-Umgehung der Host-Grenze (falscher Modus, nie ein umgeleiteter Token); Regelzahl-Decke ≈ 500 Sites | Claude + D. H. |
-| 2026-08-17 | Popup + gemeinsame UI (`src/ui/`, `src/popup/`), Manifest (`action`, `icons`, v0.1.0) | Kein CRITICAL/HIGH. `permissions`/`host_permissions` byte-identisch, genau ein `innerHTML` mit statischem Template, Validierung aus `rules.js` importiert statt nachgebaut. LOW: `options_ui.open_in_tab` auf `true` (Chrome garantiert das Verhalten von `openOptionsPage()` bei `false` nicht) | Claude + D. H. |
-| 2026-08-17 | `src/background/service-worker.js` — Rule-Sync | Keine Findings. Zwei Listener (`onInstalled`, `storage.onChanged` gefiltert auf `local`), kein `onMessage`, kein `fetch`/`eval`, `removeRuleIds`+`addRules` atomar in einem Aufruf | Claude + D. H. |
+| 2026-08-17 | Phase-1 scaffolding: new `manifest.json`, placeholders in `src/` | No CRITICAL/HIGH. MEDIUM: customer-identifying values in the repository → cleaned up (tenant replaced by a placeholder, source document gitignored). LOW: `minimum_chrome_version: 120` not checked against the Edge version of the target fleet | Claude + D. H. |
+| 2026-08-17 | `src/lib/rules.js` — the first real rule condition, plus unit tests | No CRITICAL/HIGH. LOW: `isValidUpn` lets `+` and `;` through — no injection is possible, but a `+` would become a space server-side. Check during the load test whether `queryTransform` encodes it | Claude + D. H. |
+| 2026-08-17 | Per-site rules: `src/lib/rules.js` (the three-band priority model, `isValidDomain`), `src/background/service-worker.js` (union of rule IDs) | No CRITICAL/HIGH. MEDIUM: new `.*` surface in the site pattern — bounded behind the ESTS anchor, secured as a unit-test invariant. LOW: `%2E` bypass of the host boundary (produces the wrong mode, never a redirected token); rule-count ceiling ≈ 500 sites | Claude + D. H. |
+| 2026-08-17 | Popup + shared UI (`src/ui/`, `src/popup/`), manifest (`action`, `icons`, v0.1.0) | No CRITICAL/HIGH. `permissions`/`host_permissions` byte-identical, exactly one `innerHTML` with a static template, validation imported from `rules.js` instead of reimplemented. LOW: `options_ui.open_in_tab` set to `true` (Chrome does not guarantee the behaviour of `openOptionsPage()` when it is `false`) | Claude + D. H. |
+| 2026-08-17 | `src/background/service-worker.js` — rule sync | No findings. Two listeners (`onInstalled`, `storage.onChanged` filtered to `local`), no `onMessage`, no `fetch`/`eval`, `removeRuleIds` + `addRules` atomic in a single call | Claude + D. H. |
 
-Jeder Review nach Skill-Checkliste wird hier mit Datum, Diff-Umfang und Ergebnis eingetragen. Ein nicht eingetragener Review hat nicht stattgefunden.
+Every review performed against the skill checklist is recorded here with its date, the scope of the diff, and the result. A review that is not recorded did not happen.

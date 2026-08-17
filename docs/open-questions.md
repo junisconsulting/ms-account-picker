@@ -1,58 +1,58 @@
-# Offene Fragen
+# Open Questions
 
-> Wird im Projektverlauf abgebaut. Claude entscheidet keine offene Frage selbst — bei Berührung nachfragen. Entschiedenes wandert mit Datum und Begründung nach unten.
+> This file shrinks as the project proceeds. Claude does not decide an open question on its own — when a task touches one, ask. A decision moves down with its date and its reasoning.
 
-## Offen
+## Open
 
-*(derzeit keine — alle Fragen aus dem Briefing §11 sind entschieden)*
+*(none at the moment — every question raised so far is decided)*
 
-## Entschieden
+## Decided
 
-### F3 — Konfigurationsquelle → manuelle Eingabe in der Options-Seite *(2026-08-17)*
+### F3 — Configuration source → manual entry in the extension UI *(2026-08-17)*
 
-Der EADM-UPN wird einmalig in der Extension-UI eingegeben und in `chrome.storage.local` persistiert. **Keine Vorbelegung per Edge-Policy.**
+The UPN is entered once in the extension UI and persisted in `chrome.storage.local`. **No defaults by Edge policy.**
 
-Begründung des Auftraggebers: maximale Flexibilität — die Ableitung des EADM-UPN ist bei jedem Kunden anders, ein zentrales Schema wäre pro Umgebung neu zu bauen.
+The client's reasoning: maximum flexibility — how the admin UPN is derived differs for every customer, so a central scheme would have to be rebuilt per environment.
 
-Konsequenzen, die daraus folgen und nicht verhandelbar sind:
+The consequences that follow, and that are not negotiable:
 
-- Es gibt **keinen** `3rdparty/extensions/<id>/policy`-Pfad. Die einzige Policy im Projekt ist `ExtensionSettings` für Force-Install und Versionspinning (`deployment.md` §2).
-- `chrome.storage.managed` wird nicht gelesen. Wer das später einführen will, muss beachten: eine Policy gilt für den OS-Benutzer, nicht für ein Edge-Profil — sie erreicht damit auch das Workforce-Profil und hebt die Trennung auf, auf der das Deployment beruht.
-- Die Aktivierung bleibt in jedem Fall ein Flag in `chrome.storage.local`, per Default aus (Constraint A3). Picker-Modus braucht keinen UPN, also kann der UPN nicht das Gate sein.
-- Der Einrichtungsschritt pro Admin ist damit gesetzt: Extension öffnen, aktivieren, ggf. UPN eintragen. Bei der Größe der EADM-Population ist das ein Onboarding-Thema, kein technisches — nicht konfigurierte Profile bleiben stumm inaktiv, nicht fehlerhaft.
+- There is **no** `3rdparty/extensions/<id>/policy` path. The only policy in the project is `ExtensionSettings` for force-install and version pinning (`deployment.md` §2).
+- `chrome.storage.managed` is not read. Anyone who wants to introduce it later has to note this: a policy applies to the OS user, not to an Edge profile — it therefore reaches the workforce profile too and dissolves the separation the deployment relies on.
+- Activation stays a flag in `chrome.storage.local` in any case, off by default (constraint A3). Picker mode needs no UPN, so the UPN cannot be the gate.
+- The per-admin setup step is therefore fixed: open the extension, activate it, enter the UPN if wanted. At the size of the target population that is an onboarding topic, not a technical one — an unconfigured profile stays silently inert, not broken.
 
-### F5 — Device-Registration-Block für EADM → out of scope *(2026-08-17)*
+### F5 — Device-registration block for admin accounts → out of scope *(2026-08-17)*
 
-Die CA-Policy, die EADM-Konten die Device Registration verbietet, ist im Zielumfeld **noch nicht aktiv** und wie das gesamte CA-Design kundenindividuell. Weder verlinken noch mitverwalten — dieses Repository macht keine Aussage dazu.
+The CA policy that forbids admin accounts from registering a device is **not yet active** in the target environment and, like the whole CA design, is customer-specific. Neither link it nor co-manage it — this repository makes no statement about it.
 
-Zum Verständnis für später: Die Policy verhindert, dass ein EADM-Account sich an einem Gerät registriert und damit ein Admin-PRT in den CloudAP-Cache der Standard-Workstation gerät — die Clean-Source-Verletzung, die in `architecture.md` §2 als „EADM als zweites Windows-Work-Account" verworfen wurde. Für die Extension ist sie ohne Belang: sie ändert weder Regelform noch Permissions.
+For later understanding: the policy prevents an admin account from registering on a device and thereby getting an admin PRT into the CloudAP cache of the standard workstation — the clean-source violation that `architecture.md` §2 rejects as "EADM as a second Windows work account". For the extension it is irrelevant: it changes neither the rule shape nor the permissions.
 
-### F1 — Betriebsmodus → Picker als Default, `login_hint` als Opt-in *(2026-08-17)*
+### F1 — Mode → picker as the default, `login_hint` as an opt-in *(2026-08-17)*
 
-Der Wunsch „`login_hint` mit dem Admin-User gefüllt **und** Account-Picker" ist in dieser Form nicht erfüllbar: ein gesetztes `prompt=select_account` macht `login_hint` wirkungslos (`architecture.md` §3.1). Es gibt keinen dritten Modus „Picker mit Vorauswahl".
+The wish for "`login_hint` filled with the admin user **and** an account picker" cannot be satisfied in that form: a `prompt=select_account` that is set makes `login_hint` ineffective (`architecture.md` §3.1). There is no third mode "picker with preselection".
 
-Entscheidung: **Picker (`prompt=select_account`) ist Default und verpflichtender Grundzustand**, `login_hint` bleibt als Opt-in pro Profil. Begründung in `architecture.md` §3.1 — kurz: der Picker ist der empirisch belegte Modus, er hält Fremdtenants erreichbar (macht F2 gegenstandslos) und schreibt keine Identität in die URL.
+Decision: **the picker (`prompt=select_account`) is the default and the mandatory baseline**, `login_hint` stays available as a per-profile opt-in. The reasoning is in `architecture.md` §3.1 — in short: the picker is the empirically confirmed mode, it keeps foreign tenants reachable (which makes F2 moot), and it writes no identity into the URL.
 
-**Restpunkt:** Ob `prompt=select_account` **zusammen mit** `login_hint` das EADM im Picker vorauswählt, ist nicht dokumentiert und in fünf Minuten prüfbar → `verification-matrix.md` V1. Positiv = beide Wünsche erfüllt, negativ = es bleibt bei der Entscheidung.
+**Remaining point:** whether `prompt=select_account` **together with** `login_hint` preselects the account in the picker is undocumented and checkable in five minutes → `verification-matrix.md` V1. Positive = both wishes satisfied, negative = the decision stands.
 
-Zur Rückfrage „UPN dynamisch abrufbar?": nicht sinnvoll. `chrome.identity.getProfileUserInfo()` liefert das Konto, mit dem das **Edge-Profil** angemeldet ist — nicht das Konto der Portal-Session. Es kostet die zusätzliche Permission `identity`/`identity.email` in einer T0-Extension und setzt voraus, dass das EADM-Profil in Edge überhaupt angemeldet ist. Mit F3 (manuelle Eingabe) ist die Frage erledigt.
+On the question "can the UPN be retrieved dynamically?": not usefully. `chrome.identity.getProfileUserInfo()` returns the account the **Edge profile** is signed in with — not the account of the portal session. It costs the additional `identity`/`identity.email` permission in a T0 extension and assumes the admin profile is signed in to Edge at all. With F3 (manual entry) the question is settled.
 
-### F2 — Notausgang → globaler Toggle in der Options-Seite *(2026-08-17)*
+### F2 — Escape hatch → a global toggle in the extension UI *(2026-08-17)*
 
-Folgt aus F1: im Picker-Default ist jeder Fremdtenant über die Kontoauswahl erreichbar, ein Notausgang ist dort gegenstandslos. Er wird nur im `login_hint`-Opt-in gebraucht, und dafür genügt ein Schalter.
+Follows from F1: in the picker default every foreign tenant is reachable through the account chooser, so an escape hatch has nothing to do there. It is only needed in the `login_hint` opt-in, and a switch is enough for that.
 
-Keine Tenant-Ausnahmeliste: sie bräuchte Tenant-Segment-Matching im `regexFilter` und damit zusätzliche RE2-Fläche in genau dem Code, der bei jeder Änderung reviewpflichtig ist — für einen Fall, der im Default-Modus nicht auftritt.
+No tenant exception list: it would need tenant-segment matching in the `regexFilter`, and therefore additional RE2 surface in exactly the code that requires a review on every change — for a case that does not arise in the default mode.
 
-### F4 — Repository-Name → `ms-account-picker` *(2026-08-17)*
+### F4 — Repository name → `ms-account-picker` *(2026-08-17)*
 
-Extension-Name „MS Account Picker". Allgemeiner und kundenunspezifischer als der Arbeitsname `eadm-account-picker-extension`. Im gesamten Repository umgesetzt.
+Extension name "MS Account Picker". More general and less customer-specific than the working title `eadm-account-picker-extension`. Applied throughout the repository.
 
-### F6 — E2E-Strategie → Dummy-Authorize-Endpunkt *(2026-08-17)*
+### F6 — E2E strategy → a dummy authorize endpoint *(2026-08-17)*
 
-`tests/e2e/` testet gegen einen lokalen Endpunkt, der die Form eines Authorize-Requests hat und die Regel triggert — **kein echter ESTS-Login, keine Credentials im Testlauf**. Beweist Regel-Registrierung, Parameter-Injektion und Redirect-Verhalten. Was das nicht beweist, bleibt Sache der Verifikationsmatrix.
+`tests/e2e/` tests against a local endpoint that has the shape of an authorize request and triggers the rule — **no real ESTS sign-in, no credentials in the test run**. It proves rule registration, parameter injection and redirect behaviour. What it does not prove remains the business of the verification matrix.
 
-Die damals offene Detailfrage — wie der Dummy unter den echten Hostnamen kommt — ist beantwortet: Chromes `--host-resolver-rules=MAP login.microsoftonline.com 127.0.0.1:<port>` plus `--ignore-certificate-errors` und ein selbstsigniertes Zertifikat, das pro Lauf erzeugt wird. Damit läuft die **Produktivregel** gegen einen lokalen Endpunkt, ohne dass in der Extension etwas gestubbt wäre. Umgesetzt in `tests/e2e/dnr.e2e.js` (2026-08-17).
+The detail question that was open at the time — how the dummy ends up under the real host name — is answered: Chrome's `--host-resolver-rules=MAP login.microsoftonline.com 127.0.0.1:<port>` plus `--ignore-certificate-errors` and a self-signed certificate generated per run. That runs the **production rule** against a local endpoint without anything in the extension being stubbed. Implemented in `tests/e2e/dnr.e2e.js` (2026-08-17).
 
-### F7 — Endpunkt-Aliase → nicht abdecken *(2026-08-17)*
+### F7 — Endpoint aliases → not covered *(2026-08-17)*
 
-`login.windows.net` und `login.microsoft.com` bleiben außen vor. Kein Portal im Zielumfeld nutzt sie erkennbar; jeder Alias ist ein zusätzlicher `host_permissions`-Eintrag. Bei konkretem Bedarf: Host-Permission-Review nach `security-review.md`, kein Bugfix nebenbei.
+`login.windows.net` and `login.microsoft.com` stay out. No portal in the target environment is known to use them, and each alias is another `host_permissions` entry. If a concrete need appears: a host-permission review per `security-review.md`, not a bugfix on the side.

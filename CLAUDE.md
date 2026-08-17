@@ -75,7 +75,10 @@ ms-account-picker/
 │   ├── settings.json             # Permissions + Stop hook
 │   ├── hooks/verify.sh           # The deterministic gate (exit 0 green / 2 red)
 │   └── skills/                   # verify, security-review, dnr-rule-check
-├── docs/                         # Project documentation (German)
+├── LICENSE                       # Apache-2.0, verbatim
+├── NOTICE                        # Copyright line + the trademark reservation
+├── SECURITY.md                   # Vulnerability reporting; known-and-accepted properties
+├── docs/                         # Project documentation
 │   ├── architecture.md           # Decision + rejected alternatives
 │   ├── security-review.md        # T0 classification, permissions, risk acceptance
 │   ├── deployment.md             # ExtensionSettings policy, signing, rollout
@@ -84,7 +87,10 @@ ms-account-picker/
 ├── src/                          # The extension, loaded as written (no build step)
 │   ├── manifest.json
 │   ├── background/service-worker.js   # Rule sync only
-│   ├── options/                       # UPN + mode configuration
+│   ├── ui/                            # The whole configuration UI + vendor strings
+│   ├── popup/                         # Shell — the primary surface
+│   ├── options/                       # Shell — same UI, opened from the extensions list
+│   ├── icons/                         # Rendered PNGs (Chrome takes no SVG)
 │   └── lib/rules.js                   # Rule building — pure, unit-testable
 ├── tests/
 │   ├── unit/                     # node:test, no framework
@@ -98,7 +104,7 @@ ms-account-picker/
 - `src/lib/rules.js` stays **pure**: configuration in, rule objects out. No `chrome.*` calls in there — that is what makes it unit-testable.
 - All `chrome.*` access lives in the service worker and the options page.
 - Every function carries a comment explaining **intent** — reviewers of this repo are identity admins, not JS developers.
-- All identifiers, code comments and commit messages: **English**. Project documentation in `docs/` and `README.md`: **German**.
+- **Everything in this repository is English** — identifiers, code comments, commit messages, `docs/`, `README.md`, UI strings. Decided 2026-08-17 when the repository was set on course to be public: a German doc set would lock out most of its readers. There is no bilingual mode and no translation to maintain.
 - Tests use `node:test` + `node:assert`. No Jest, no Vitest, no fixtures.
 
 ## Way of Working
@@ -112,6 +118,16 @@ ms-account-picker/
 ## Learning Loop
 
 When a session reveals that a documented procedure was wrong, that Chromium/ESTS behaved differently than a skill claims, or a non-obvious environment fact — persist it **in the same session**: correct the affected skill or CLAUDE.md section, or add a line to `docs/open-questions.md`. A wrong doc is worse than no doc.
+
+## Licence
+
+**Apache-2.0**, decided 2026-08-17. The identifier lives in exactly one place: `LICENSE`, the canonical text verbatim. Never restate it in a source header or a second metadata field.
+
+Three consequences that follow from the licence and are not style preferences:
+
+- **`NOTICE` is part of the distribution.** Apache-2.0 §4(d) obliges downstream redistributors to carry it, so it stays short and factual. It holds the copyright line and the trademark reservation — the junis name and the logo files under `assets/logo/` and `src/icons/` are **not** covered by the code grant (§6).
+- **No CLA.** §5 licenses inbound contributions under the same terms outbound, and this project has no dual-licensing path to protect. That is the difference from IDemFlow, which needs one — do not copy its CLA apparatus into this repository.
+- **Apache-2.0, not AGPL.** AGPL's §13 network-use trigger cannot fire for a browser extension: there is no service anyone could offer. It would add procurement friction without adding protection. Do not propose it again.
 
 ## Commit Style
 

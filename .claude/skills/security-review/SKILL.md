@@ -58,7 +58,7 @@ The single most dangerous class of change in this repository.
 
 - [ ] The stored UPN never leaves `chrome.storage.local` except into the DNR rule
 - [ ] No real UPNs, tenant IDs, or customer client IDs in code, tests, docs, or commit messages — placeholders only
-- [ ] The UPN's visibility in browser history / proxy logs / `Referer` is documented in `docs/security-review.md` §Datenschutz and unchanged by this diff. If the change widens that exposure, say so explicitly
+- [ ] The UPN's visibility in browser history / proxy logs / `Referer` is documented in `docs/security-review.md` §5 (Data protection) and unchanged by this diff. If the change widens that exposure, say so explicitly
 
 ## 5. Supply chain
 

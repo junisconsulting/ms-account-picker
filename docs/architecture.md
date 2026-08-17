@@ -1,73 +1,74 @@
-# Architektur
+# Architecture
 
-> Status: Phase 1 (Struktur). Die Entscheidungen hier sind getroffen; die mit ⏳ markierten Annahmen sind noch nicht empirisch belegt.
+> Status: implemented, not yet rolled out. The decisions recorded here are made. What is still unproven is listed in §7.2 and nowhere else — an assumption that does not appear there is either proven or not load-bearing.
 
 ## 1. Problem
 
-Auf Hybrid-Joined-Windows-Clients injiziert Edge den Primary Refresh Token (PRT) des angemeldeten Workforce-Users in **jedes** Browser-Profil. Ein Admin, der in einem zweiten Edge-Profil mit seinem cloud-only Admin-Account (EADM) arbeiten will, wird dadurch automatisch in den Workforce-Account angemeldet.
+On hybrid-joined Windows clients Edge injects the signed-in workforce user's Primary Refresh Token (PRT) into **every** browser profile. An admin who wants to work in a second Edge profile with a cloud-only admin account (EADM) is therefore signed in with the workforce account automatically.
 
-**Betroffene Population:** die EADM-Konten des Auftraggebers, perspektivisch weitere Kunden mit gleicher Konstellation.
+**Affected population:** the client's EADM accounts, and prospectively further customers in the same constellation.
 
-**Warum das nicht trivial ist:** Der PRT liefert gleichzeitig den Device Claim, den die Conditional-Access-Policy für Hybrid-Join (im Folgenden **Device-Claim-CA**) voraussetzt. Jede Lösung, die das SSO abschaltet, bricht die Gerätebindung.
+**Why this is not trivial:** the PRT also supplies the device claim that the conditional-access policy for hybrid join (below: the **device-claim CA**) requires. Any solution that switches SSO off breaks the device binding.
 
-## 2. Verworfene Alternativen
+## 2. Rejected alternatives
 
-Nicht erneut vorschlagen. Jede Zeile ist bereits geprüft und aus dem genannten Grund gescheitert.
+Do not propose these again. Every line has been examined and failed for the reason given.
 
-| Ansatz | Warum verworfen |
+| Approach | Why it was rejected |
 | --- | --- |
-| Edge-Setting „Automatically sign in to sites…" | Ist ein **Picker**-Schalter, kein SSO-Schalter. Versteckt nur die Auswahl |
-| Edge-Policy `AADWebSiteSSOUsingThisProfileEnabled` | `Per Profile: No` → trifft auch das Workforce-Profil |
-| `loginHint` in Portal-URLs | Nur Azure- und Entra-Portal unterstützen `/signin/index/@domain?loginHint=`. Defender, Fabric, SharePoint, Teams: kein Mechanismus |
-| EADM als zweites Windows-Work-Account | Admin-PRT im CloudAP-Cache der Standard-Workstation → Clean-Source-Verletzung (Enterprise Access Model). Vom Auftraggeber abgelehnt |
-| CA-Block auf `MicrosoftAdminPortals` für Workforce | SSO findet trotzdem statt, Blockseite bietet keinen Kontowechsel |
-| Edge Custom Site Switch | Windows-Account erscheint in jedem Profil, Profilwechsel löst das nicht |
-| Firefox / Chrome ohne WAM | Kein Device Claim → die Device-Claim-CA blockt |
-| Zweites Windows-Benutzerkonto / PAW / AVD | Strukturell korrekt, aber vom Auftraggeber als UX-untauglich verworfen |
-| Vorgebaute Authorize-URLs | Scheitert zwingend an PKCE und Single-Use-`state`. Getestet |
+| Edge setting "Automatically sign in to sites…" | It is a **picker** switch, not an SSO switch. It only hides the choice |
+| Edge policy `AADWebSiteSSOUsingThisProfileEnabled` | `Per Profile: No` → it hits the workforce profile as well |
+| `loginHint` in portal URLs | Only the Azure and Entra portals support `/signin/index/@domain?loginHint=`. Defender, Fabric, SharePoint, Teams: no mechanism |
+| EADM as a second Windows work account | The admin PRT lands in the CloudAP cache of the standard workstation → a clean-source violation (Enterprise Access Model). Rejected by the client |
+| CA block on `MicrosoftAdminPortals` for workforce | SSO still happens, and a block page offers no way to switch accounts |
+| Edge custom site switch | The Windows account appears in every profile; switching profiles does not solve it |
+| Firefox / Chrome without WAM | No device claim → the device-claim CA blocks |
+| A second Windows user account / PAW / AVD | Structurally correct, but rejected by the client as unusable in daily work |
+| Pre-built authorize URLs | Fails by construction on PKCE and single-use `state`. Tested |
 
-## 3. Lösungsansatz
+## 3. The approach
 
-Eine **Manifest-V3-Browser-Extension**, die im EADM-Profil den OAuth-Authorize-Request im Flug um einen Query-Parameter ergänzt.
+A **Manifest-V3 browser extension** that, in the admin profile, adds a query parameter to the OAuth authorize request in flight.
 
-**Kernprinzip: ergänzen, nicht bauen.** Das Portal (MSAL.js) erzeugt den Request inklusive `state`, `nonce`, `code_challenge` (PKCE) und `response_mode`. Die Extension fügt ausschließlich einen Parameter hinzu. Damit funktioniert der Ansatz automatisch für jedes Microsoft-Portal, ohne dass Client-IDs oder Redirect-URIs gepflegt werden müssen.
+**Core principle: augment, never construct.** The portal (MSAL.js) builds the request including `state`, `nonce`, `code_challenge` (PKCE) and `response_mode`. The extension adds exactly one parameter. That is why the approach works for every Microsoft portal without maintaining client IDs or redirect URIs.
 
-### 3.1 Zwei Betriebsmodi
+### 3.1 Two modes
 
-| Modus | Injizierter Parameter | Verhalten |
+| Mode | Injected parameter | Behaviour |
 | --- | --- | --- |
-| **Picker** | `prompt=select_account` | Kontoauswahl erscheint immer, Workforce-Account bleibt sichtbar |
-| **Hint** *(Zielmodus)* | `login_hint=<EADM-UPN>` | Direkt zum EADM, Workforce-Account erscheint nie |
+| **Picker** | `prompt=select_account` | The account chooser always appears; the workforce account stays visible |
+| **Hint** | `login_hint=<UPN>` | Straight to the configured account; the workforce account never appears |
 
-**Beide sind gegenseitig ausschließend** — ein gesetzter `prompt=select_account` macht `login_hint` wirkungslos. „Picker, aber mit vorausgewähltem EADM" ist damit kein verfügbarer dritter Modus.
+**The two are mutually exclusive** — a `prompt=select_account` that is set makes `login_hint` ineffective. "Picker, but with the admin account preselected" is therefore not an available third mode.
 
-**Entscheidung (2026-08-17):** Picker ist der Default und der verpflichtende Grundzustand. `login_hint` bleibt als Opt-in pro Profil erhalten, für Admins, die den Klick sparen wollen und keinen Fremdtenant brauchen.
+**Decision (2026-08-17):** the picker is the default and the mandatory baseline. `login_hint` remains available as a per-profile opt-in, for admins who want to save the click and do not need a foreign tenant.
 
-Begründung:
+Reasoning:
 
-- Der Picker ist der Modus, der ohne unbelegte Annahmen funktioniert — `prompt=select_account` ist empirisch belegt (§7.1), die `login_hint`-Wirkung gegen einen fremden PRT ist es nicht (§7.2).
-- Der Picker hält jeden Fremdtenant erreichbar und macht damit einen separaten Notausgang überflüssig.
-- Der Picker schreibt keine Identität in die URL — der Datenschutzpunkt aus `security-review.md` §5 entfällt in diesem Modus vollständig.
+- The picker is the mode that works without unproven assumptions — `prompt=select_account` is empirically confirmed (§7.1), the effect of `login_hint` against a foreign PRT is not (§7.2).
+- The picker keeps every foreign tenant reachable, which makes a separate escape hatch unnecessary.
+- The picker writes no identity into the URL — the data-protection point from `security-review.md` §5 does not arise in this mode at all.
 
-Offen bleibt, ob `prompt=select_account` zusammen mit `login_hint` das EADM im Picker **vorauswählt**. Das ist nicht dokumentiert, aber in fünf Minuten manuell prüfbar → `verification-matrix.md` V1. Fällt der Test positiv aus, ist das die Kombination aus beiden Wünschen; fällt er negativ aus, bleibt es bei der Entscheidung oben.
+It remains open whether `prompt=select_account` together with `login_hint` **preselects** the account in the picker. That is undocumented but checkable by hand in five minutes → `verification-matrix.md` V1. If the test comes out positive, that combination satisfies both wishes; if it comes out negative, the decision above stands.
 
-## 4. Komponenten
+## 4. Components
 
-Vier Stück. Bewusst minimal — kein Framework, kein Build-Step für die Extension selbst, kein Remote Code.
+Deliberately minimal — no framework, no build step for the extension itself, no remote code.
 
 ```
-Options-Seite  →  chrome.storage.local  →  Service Worker  →  DNR Dynamic Rule
-   (UPN)              (Konfiguration)        (Rule-Sync)        (Request-Transform)
+Popup / options page  →  chrome.storage.local  →  Service Worker  →  DNR dynamic rules
+   (mode, UPN, sites)       (configuration)         (rule sync)      (request transform)
 ```
 
-| Komponente | Datei | Aufgabe |
+| Component | File | Job |
 | --- | --- | --- |
-| Options-Seite | `src/options/` | Aktivierung, Modus und UPN erfassen, in `chrome.storage.local` schreiben. **Einzige Konfigurationsquelle** — keine Policy-Vorbelegung, bewusst manuell (`open-questions.md` F3) |
-| Rule-Builder | `src/lib/rules.js` | Konfiguration → Regel-Objekt. Rein funktional, keine `chrome.*`-Aufrufe, unit-testbar |
-| Service Worker | `src/background/service-worker.js` | Liest Storage, synchronisiert die dynamische Regel. Sonst nichts |
-| Manifest | `src/manifest.json` | Permissions, MV3-Deklaration |
+| Configuration UI | `src/ui/config-ui.js` | Activation, mode, UPN and the per-site list; writes to `chrome.storage.local`. **The only configuration source** — no policy defaults, deliberately manual (`open-questions.md` F3) |
+| Popup / options page | `src/popup/`, `src/options/` | Two shells that render the same UI. The popup is the primary surface; the options page exists because Chrome links to it from the extensions list |
+| Rule builder | `src/lib/rules.js` | Configuration → rule objects. Purely functional, no `chrome.*` calls, unit-testable |
+| Service worker | `src/background/service-worker.js` | Reads storage, syncs the dynamic rules. Nothing else |
+| Manifest | `src/manifest.json` | Permissions, MV3 declaration |
 
-### 4.1 Regelform
+### 4.1 Rule shape
 
 ```
 action.type              = "redirect"
@@ -76,75 +77,75 @@ condition.regexFilter    = ^https://login\.microsoftonline\.com/[^/]+/oauth2/(?:
 condition.resourceTypes  = ["main_frame"]
 ```
 
-### 4.2 Per-Site-Regeln
+### 4.2 Per-site rules
 
-Ein globaler Default plus Ausnahmen pro Portal. Drei Prioritätsbänder:
+One global default plus exceptions per portal. Three priority bands:
 
-| Band | Priority | Regel | Wann |
+| Band | Priority | Rule | When |
 | --- | --- | --- | --- |
-| Basis | 1 | breite Authorize-Regex → globaler Default-Parameter | aktiviert |
-| Site-Sperre | 2 | Site-Regex → `action: "allow"` | für **jede** konfigurierte Site |
-| Site-Injektion | 3 | **identische** Site-Regex → Parameter dieser Site | Site-Modus ≠ `off` |
+| Base | 1 | broad authorize regex → the global default parameter | activated |
+| Site guard | 2 | site regex → `action: "allow"` | for **every** configured site |
+| Site injection | 3 | the **identical** site regex → that site's parameter | site mode ≠ `off` |
 
-**Woran das Portal erkannt wird.** Nicht am Initiator: `condition.initiatorDomains` ist hier unbrauchbar, weil eine browser-initiierte Navigation — getippte URL, Bookmark, Verlauf — **keinen** Initiator hat und ein HTTP-302 den *ursprünglichen* Initiator behält, nicht das umleitende Portal (Chromium-Quelle `url_pattern_index.cc`, `navigation_params.mojom`). Eine Filterung darüber würde sporadisch funktionieren, was schlimmer ist als gar nicht.
+**How the portal is recognised.** Not by the initiator: `condition.initiatorDomains` is unusable here, because a browser-initiated navigation — a typed URL, a bookmark, history — has **no** initiator, and an HTTP 302 keeps the *original* initiator rather than the redirecting portal (Chromium sources `url_pattern_index.cc`, `navigation_params.mojom`). Filtering on that basis would work sporadically, which is worse than not at all.
 
-Stattdessen steht die Portal-Domain bereits in der Authorize-URL: percent-encodiert im `redirect_uri`. Belegt für drei Portale des Zielumfelds → `verification-matrix.md` V5, samt der Grenzen dieser Heuristik.
+Instead, the portal's domain is already present in the authorize URL: percent-encoded inside `redirect_uri`. Confirmed for three portals of the target environment → `verification-matrix.md` V5, together with the limits of the heuristic.
 
-**Warum die Sperrregel auf die Site-Bedingung matcht und nicht auf den injizierten Parameter.** Die p2-Bedingung erwähnt den Parameter nicht und matcht deshalb vor und nach der Injektion identisch. Damit ist das Modell korrekt, unabhängig davon, wie Chromium eine wirkungslose Regel behandelt.
+**Why the guard rule matches on the site condition and not on the injected parameter.** The priority-2 condition does not mention the parameter, and therefore matches identically before and after the injection. That makes the model correct regardless of how Chromium treats a rule that has no effect.
 
-Gemessen (2026-08-17): **Chromium fällt nicht durch.** Ohne Sperrregel bleibt E1 grün — nach einer Regel, deren Redirect eine identische URL ergäbe, wird abgebrochen, die Basisregel kommt nicht mehr zum Zug. Die Sperre ist damit für `picker`/`hint`-Sites redundant und für `off`-Sites tragend. Sie bleibt für beide: ein T0-Pfad darf nicht auf undokumentiertem Verhalten ruhen, das ein Browser-Update still ändern kann.
+Measured (2026-08-17): **Chromium does not fall through.** With the guard rule removed, E1 stays green — after a rule whose redirect would produce an identical URL, matching stops and the base rule never gets its turn. The guard is thus redundant for `picker`/`hint` sites and load-bearing for `off` sites. It stays for both: a T0 path must not rest on undocumented behaviour that a browser update can change silently.
 
-**Verworfen:** `removeParams`, damit sich Basis- und Site-Regel gegenseitig ausschließen. Das oszilliert — die Basis setzt den Parameter, die Site-Regel entfernt ihn, und der Flow endet in `ERR_TOO_MANY_REDIRECTS`. Steht als benannte Falle in `dnr-rule-check`.
+**Rejected:** using `removeParams` to make the base rule and the site rule mutually exclusive. That oscillates — the base sets the parameter, the site rule removes it, and the flow ends in `ERR_TOO_MANY_REDIRECTS`. It is recorded as a named trap in `dnr-rule-check`.
 
-## 5. Harte technische Randbedingungen
+## 5. Hard technical constraints
 
-Die verbindliche Fassung steht in `CLAUDE.md` (A1–A10). Hier die Begründungen:
+The binding version is in `CLAUDE.md` (A1–A10). The reasoning:
 
-- 🔴 **`resourceTypes: ["main_frame"]` ist Pflicht.** Silent Token Renewal läuft als `prompt=none` im versteckten iframe. Greift die Regel dort, bricht die Token-Erneuerung in **allen** M365-Portalen.
-- 🔴 **`regexFilter` nutzt RE2 — keine Lookaheads.** Der Loop-Schutz muss anders gelöst werden: eine identische Ziel-URL führt zu keinem Redirect. ⏳ Zu verifizieren, nicht zu unterstellen.
-- ⚠️ **v1- und v2-Endpunkt abdecken:** `/oauth2/authorize` und `/oauth2/v2.0/authorize`.
-- **Endpunkt-Aliase (`login.windows.net`, `login.microsoft.com`): bewusst nicht abgedeckt** (2026-08-17). Kein Portal im Zielumfeld nutzt sie erkennbar, und jeder Alias ist ein zusätzlicher `host_permissions`-Eintrag. Bei konkretem Bedarf: Host-Permission-Review, kein Bugfix.
-- ⚠️ **WS-Federation (`/wsfed?`) kennt kein `prompt`.** Nicht abgedeckt — bekannte Lücke.
-- **Ohne explizite Aktivierung im Profil darf keine Regel registriert werden.** Die Extension ist dann funktional inaktiv. Das ermöglicht browserweiten Force-Install per Policy, ohne das Workforce-Profil zu beeinflussen. Das Gate ist ein Flag in `chrome.storage.local` (pro Profil), **nicht** der UPN — der Picker-Default braucht gar keinen UPN.
+- 🔴 **`resourceTypes: ["main_frame"]` is mandatory.** Silent token renewal runs as `prompt=none` in a hidden iframe. A rule that matches there breaks token renewal in **all** M365 portals.
+- 🔴 **`regexFilter` uses RE2 — no lookaheads.** Loop protection has to be solved without them: an identical target URL produces no redirect. Confirmed, see §7.1.
+- ⚠️ **Cover the v1 and the v2 endpoint:** `/oauth2/authorize` and `/oauth2/v2.0/authorize`.
+- **Endpoint aliases (`login.windows.net`, `login.microsoft.com`): deliberately not covered** (2026-08-17). No portal in the target environment is known to use them, and each alias is another `host_permissions` entry. If a concrete need appears: a host-permission review, not a bugfix.
+- ⚠️ **WS-Federation (`/wsfed?`) has no `prompt`.** Not covered — a known gap.
+- **Without explicit activation in the profile, no rule may be registered.** The extension is then functionally inert. That is what makes a browser-wide force-install possible without affecting the workforce profile. The gate is a flag in `chrome.storage.local` (per profile), **not** the UPN — the picker default needs no UPN at all.
 
-## 6. Notausgang
+## 6. Escape hatch
 
-Das Problem existiert **nur im `login_hint`-Modus**: dort ist kein anderer Account mehr erreichbar — auch nicht der Test-Tenant `<test-tenant>.onmicrosoft.com`. Im Picker-Modus (Default) ist jeder Account über die Kontoauswahl erreichbar, ein Notausgang ist dort gegenstandslos.
+The problem only exists **in `login_hint` mode**: there, no other account is reachable, not even a test tenant. In picker mode (the default) every account is reachable through the account chooser, so an escape hatch has nothing to do.
 
-**Entscheidung (2026-08-17):** globaler Ein-/Ausschalter in der Options-Seite. Keine Tenant-Ausnahmeliste — sie bräuchte Tenant-Segment-Matching im `regexFilter` und damit zusätzliche RE2-Fläche in genau dem Teil des Codes, der bei jeder Änderung reviewpflichtig ist. Für einen Fall, der im Default-Modus gar nicht auftritt.
+**Decision (2026-08-17):** a global on/off switch in the configuration UI. No tenant exception list — that would need tenant-segment matching in the `regexFilter`, and therefore additional RE2 surface in exactly the part of the code that requires a review on every change. For a case that does not arise in the default mode.
 
-Der Schalter ist kein Rollback-Pfad auf Flottenebene — der läuft über die Policy, siehe `deployment.md` §5.
+The switch is not a fleet-level rollback path; that runs through the policy, see `deployment.md` §5.
 
-## 7. Empirischer Stand
+## 7. Empirical status
 
-### 7.1 Belegt
+### 7.1 Confirmed
 
-- `prompt=select_account` unterbricht das PRT-basierte Auto-SSO zuverlässig. Manuell verifiziert am Azure-Portal-Request (`/organizations/oauth2/v2.0/authorize`).
-- Der reale Request nutzt `/organizations/`, nicht `/common/` → das Tenant-Segment im Regex muss variabel sein.
-- Vorgebaute URLs scheitern an PKCE und Single-Use-`state`.
-- 🟢 **Der Device Claim bleibt erhalten — in beiden Modi.** Manuell im Sign-in-Log verifiziert (2026-08-17). Damit ist die zentrale Unsicherheit des Konzepts ausgeräumt: die Extension bricht die Gerätebindung nicht, die Device-Claim-CA blockt auch im Erzwingungsmodus nicht.
-- Kein Redirect-Loop: Chromium führt einen Redirect auf eine identische URL nicht aus. Automatisiert belegt durch `tests/e2e/dnr.e2e.js` (2026-08-17).
-- `host_permissions` auf `login.microsoftonline.com` reichen aus — die Regel greift auch bei Navigation von einem fremden Origin. Automatisiert belegt (2026-08-17). Das Abbruchkriterium aus `security-review.md` §4 ist damit nicht eingetreten.
+- `prompt=select_account` reliably interrupts PRT-based auto-SSO. Verified manually against the Azure portal request (`/organizations/oauth2/v2.0/authorize`).
+- The real request uses `/organizations/`, not `/common/` → the tenant segment in the regex has to be variable.
+- Pre-built URLs fail on PKCE and single-use `state`.
+- 🟢 **The device claim survives — in both modes.** Verified manually in the sign-in log (2026-08-17). This clears the concept's central uncertainty: the extension does not break the device binding, and the device-claim CA does not block even in enforcement mode.
+- No redirect loop: Chromium does not execute a redirect to an identical URL. Proven automatically by `tests/e2e/dnr.e2e.js` (2026-08-17).
+- `host_permissions` on `login.microsoftonline.com` is sufficient — the rule applies even when the navigation starts from a foreign origin. Proven automatically (2026-08-17). The stop criterion from `security-review.md` §4 has therefore not been triggered.
 
-### 7.2 Noch nicht belegt
+### 7.2 Not yet confirmed
 
-| Annahme | Verifikation | Konsequenz bei negativ |
+| Assumption | Verification | Consequence if negative |
 | --- | --- | --- |
-| `login_hint` überschreibt einen PRT für einen **anderen** User | Manuell, im EADM-Profil bei aktivem Workforce-PRT | `login_hint`-Modus entfällt ersatzlos; der Picker bleibt einziger Modus und trägt das Konzept allein |
-| `prompt=select_account` + `login_hint` wählt das Konto im Picker vor | Manuell, Authorize-URL um beide Parameter ergänzen | Keine — es bleibt beim Picker ohne Vorauswahl |
+| `login_hint` overrides a PRT belonging to a **different** user | Manually, in the admin profile with an active workforce PRT | The `login_hint` mode is dropped with no replacement; the picker remains the only mode and carries the concept on its own |
+| `prompt=select_account` + `login_hint` preselects the account in the picker | Manually, by adding both parameters to an authorize URL | None — the picker simply stays without preselection |
 
-## 8. Referenzen
+## 8. References
 
-Öffentlich:
+Public:
 
-- MS Learn: `declarativeNetRequest`, `conditionalAccessApplications`, OIDC `prompt`-Parameter
-- Microsoft Enterprise Access Model — Clean-Source-Prinzip
+- MS Learn: `declarativeNetRequest`, `conditionalAccessApplications`, the OIDC `prompt` parameter
+- Microsoft Enterprise Access Model — the clean-source principle
 
-Umgebungsspezifisch (bewusst **nicht** in diesem Repository):
+Environment-specific, and deliberately **not** in this repository:
 
-- Die CA-Namenskonvention des Auftraggebers
-- Die Device-Claim-CA (Hybrid-Join-Anforderung) — ihr Name unterscheidet sich je Umgebung
-- Die Admin-Session-Baseline (nicht-persistente Browser-Session, Sign-in-Frequency)
-- Das interne Enterprise-Access-Model-Dokument
+- The client's CA naming convention
+- The device-claim CA (the hybrid-join requirement) — its name differs per environment
+- The admin session baseline (non-persistent browser session, sign-in frequency)
+- The internal Enterprise Access Model document
 
-Diese Artefakte haben ihren Lebenszyklus außerhalb der Extension. Wer sie braucht, findet sie beim Auftraggeber — in dieses Repo gehören sie nicht, weil es kunden- und umgebungsneutral bleiben soll.
+These artefacts have their life cycle outside the extension. Whoever needs them will find them at the client; they do not belong in this repository, which stays customer- and environment-neutral.

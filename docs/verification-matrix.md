@@ -1,74 +1,74 @@
-# Verifikationsmatrix
+# Verification Matrix
 
-> **Warum manuell:** Der ESTS-Flow lässt sich nicht sinnvoll mocken. Unit-Tests beweisen das Regel-Objekt, diese Matrix beweist das Verhalten. Beides ist nötig, keines ersetzt das andere.
+> **Why manual:** the ESTS flow cannot be mocked in any meaningful way. Unit tests prove the rule object, this matrix proves the behaviour. Both are needed; neither replaces the other.
 
-**Pflicht bei jeder Änderung an Regel-Logik oder Permissions** (`CLAUDE.md`, Verify Requirement). Ein nicht eingetragener Durchlauf hat nicht stattgefunden.
+**Mandatory on every change to rule logic or permissions** (`CLAUDE.md`, Verify Requirement). A run that is not recorded did not happen.
 
-## 0. Vorab-Verifikationen (vor dem ersten Zeile Regel-Code)
+## 0. Pre-verifications
 
-Diese vier Annahmen tragen das Design. Sie sind manuell und einmalig — solange sie offen sind, wird auf unbelegtem Grund gebaut.
+These four assumptions carry the design. They are manual and one-off; while they were open, the project was building on unproven ground.
 
-| # | Annahme | Prüfung | Konsequenz bei negativ |
+| # | Assumption | Check | Consequence if negative |
 | --- | --- | --- | --- |
-| V1 | `prompt=select_account` **plus** `login_hint` wählt das EADM im Picker vor | Authorize-URL eines Portals von Hand um beide Parameter ergänzen, aufrufen | Keine — es bleibt beim Picker ohne Vorauswahl (`open-questions.md` F1). Bei positiv: beide Anforderungen erfüllt, Modus-Design vereinfacht sich |
-| ~~V2~~ ✅ | Device Claim (`deviceDetail.deviceId`) bleibt bei `prompt`/`login_hint` erhalten | **Belegt 2026-08-17, manuell im Sign-in-Log, in beiden Modi.** Die Extension bricht die Gerätebindung nicht — das Abbruchkriterium des Gesamtkonzepts ist damit ausgeräumt | — |
-| V3 | `login_hint` überschreibt einen PRT für einen **anderen** User | Manuell, wie beim `select_account`-Test | `login_hint`-Modus entfällt ersatzlos, Picker bleibt einziger Modus |
-| ~~V4~~ ✅ | `host_permissions` auf `login.microsoftonline.com` reicht für den Redirect aus | **Belegt 2026-08-17 durch `tests/e2e/dnr.e2e.js`** — die Regel greift auch bei Navigation von einem fremden Origin ohne Host-Permission. Das Abbruchkriterium aus `security-review.md` §4 ist damit vorerst abgewendet | — |
+| V1 | `prompt=select_account` **plus** `login_hint` preselects the admin account in the picker | Take a portal's authorize URL, add both parameters by hand, call it | None — the picker simply stays without preselection (`open-questions.md` F1). If positive: both requirements are met and the mode design gets simpler |
+| ~~V2~~ ✅ | The device claim (`deviceDetail.deviceId`) survives `prompt`/`login_hint` | **Confirmed 2026-08-17, manually in the sign-in log, in both modes.** The extension does not break the device binding — the stop criterion of the whole concept is cleared | — |
+| V3 | `login_hint` overrides a PRT belonging to a **different** user | Manually, as with the `select_account` test | The `login_hint` mode is dropped with no replacement; the picker remains the only mode |
+| ~~V4~~ ✅ | `host_permissions` on `login.microsoftonline.com` is enough for the redirect | **Confirmed 2026-08-17 by `tests/e2e/dnr.e2e.js`** — the rule applies even for a navigation from a foreign origin for which there is no host permission. The stop criterion from `security-review.md` §4 is averted for now | — |
 
-### V5 ✅ — Trägt die Portal-Domain im `redirect_uri`? *(belegt 2026-08-17)*
+### V5 ✅ — Does `redirect_uri` carry the portal's domain? *(confirmed 2026-08-17)*
 
-Grundlage der Per-Site-Regeln (`architecture.md` §4.2). Geprüft an echten Authorize-Requests aus dem Zielumfeld.
+The foundation of the per-site rules (`architecture.md` §4.2). Checked against real authorize requests from the target environment.
 
-| Portal | Endpunkt | Tenant-Segment | Domain im `redirect_uri` |
+| Portal | Endpoint | Tenant segment | Domain in `redirect_uri` |
 | --- | --- | --- | --- |
 | Azure | **v2** `/oauth2/v2.0/authorize` | `/organizations/` | `portal.azure.com` ✅ |
 | Defender | **v1** `/oauth2/authorize` | `/common/` | `security.microsoft.com` ✅ |
 | Power Automate | **v2** `/oauth2/v2.0/authorize` | `/organizations/` | `make.powerautomate.com` ✅ |
 
-Drei Nebenergebnisse, die mehr wert sind als das Hauptergebnis:
+Three side results that are worth more than the main result:
 
-- **A6 ist nicht theoretisch.** Defender nutzt tatsächlich den v1-Endpunkt. Hätte die Regel nur v2 abgedeckt, wäre ein Portal im Zielumfeld stumm ungeschützt geblieben.
-- **A5 bestätigt.** Zwei Portale nutzen `/organizations/`, eines `/common/` — das variable Tenant-Segment ist Pflicht, keine Vorsichtsmaßnahme.
-- **Der `redirect_uri=`-Anker trägt.** Azure führt `management.core.windows.net` percent-encodiert im `scope`-Parameter, *vor* dem `redirect_uri`. Ohne den Anker hätte eine Site-Regel für diesen Host fälschlich gegriffen.
+- **A6 is not theoretical.** Defender really does use the v1 endpoint. Had the rule covered only v2, a portal in the target environment would have been left silently unprotected.
+- **A5 confirmed.** Two portals use `/organizations/`, one uses `/common/` — the variable tenant segment is a requirement, not a precaution.
+- **The `redirect_uri=` anchor earns its place.** Azure carries `management.core.windows.net` percent-encoded in the `scope` parameter, *before* `redirect_uri`. Without the anchor, a site rule for that host would have matched falsely.
 
-Als Regressionstest festgeschrieben in `tests/unit/rules.test.js` („the site condition works on the real shape of the target portals") — mit Platzhaltern für Client-IDs, `state` und `nonce`, erhalten bleibt nur die Struktur.
+Frozen as a regression test in `tests/unit/rules.test.js` ("the site condition works on the real shape of the target portals") — with placeholders for client IDs, `state` and `nonce`; only the structure is preserved.
 
-**Grenzen, die daraus folgen und dokumentiert bleiben müssen:** Die Konfiguration ist ein **exakter Host-Vergleich**. `azure.com` deckt `portal.azure.com` nicht ab. Portale, die sich einen `redirect_uri`-Host teilen, sind nicht unterscheidbar. Portale, deren `redirect_uri`-Host nicht der aufgerufene Host ist, fallen durch — bei den drei geprüften ist das nicht der Fall, bei ungeprüften ist es offen.
+**The limits that follow, and that have to stay documented:** the configuration is an **exact host comparison**. `azure.com` does not cover `portal.azure.com`. Portals that share a `redirect_uri` host cannot be told apart. Portals whose `redirect_uri` host is not the host being visited fall through — that is not the case for the three checked, and it is open for the unchecked ones.
 
-## 1. Automatisiert abgedeckt (nicht Teil dieser Matrix)
+## 1. Covered automatically (not part of this matrix)
 
-**Unit** (`tests/unit/`, läuft im Verify-Gate):
+**Unit** (`tests/unit/`, runs in the verify gate):
 
-- UPN → DNR-Regel-Objekt (fester Input, festes erwartetes Objekt)
-- RE2-Kompatibilität des generierten `regexFilter`
-- kein `resourceTypes` außer `main_frame`
-- leere Konfiguration → keine Regel
+- UPN → DNR rule object (fixed input, fixed expected object)
+- RE2 compatibility of the generated `regexFilter`
+- no `resourceTypes` other than `main_frame`
+- empty configuration → no rule
 
-**E2E** (`tests/e2e/dnr.e2e.js`, geladene Extension gegen einen lokalen Fake-Endpunkt):
+**E2E** (`tests/e2e/dnr.e2e.js`, the loaded extension against a local fake endpoint):
 
-`--host-resolver-rules` zeigt den echten Hostnamen `login.microsoftonline.com` auf einen lokalen HTTPS-Server. DNR matcht auf die URL, nicht auf DNS — die getestete Regel ist damit die Produktivregel, nichts ist in der Extension gestubbt. Kein Kontakt zu Microsoft, keine Credentials.
+`--host-resolver-rules` points the real host name `login.microsoftonline.com` at a local HTTPS server. DNR matches on the URL, not on DNS — what is tested is therefore the production rule, and nothing inside the extension is stubbed. No contact with Microsoft, no credentials.
 
-| Abgedeckt | Aussage |
+| Covered | Statement |
 | --- | --- |
-| **Z3** | Chromium führt einen Redirect auf eine identische URL nicht aus → kein Loop. Belegt, nicht mehr unterstellt |
-| **V4** | Die Regel greift auch bei Navigation von einem fremden Origin, für das keine `host_permissions` bestehen |
-| **A1** (Mechanismus) | Ein `authorize`-Request im iframe wird nicht angefasst — `prompt=none` kommt unverändert an |
-| **A3** | Frisches Profil → keine Regel; nach `storage.local.clear()` wieder keine |
-| **Z5** | v1-Endpunkt (`/oauth2/authorize`) greift |
-| Regelakzeptanz | Chromium nimmt den `regexFilter` an (das kann kein Unit-Test beweisen) |
-| Parametertreue | Die Parameter des Portals überleben die Transformation unverändert |
+| **Z3** | Chromium does not execute a redirect to an identical URL → no loop. Proven, no longer assumed |
+| **V4** | The rule applies even for a navigation from a foreign origin for which no `host_permissions` exist |
+| **A1** (mechanism) | An `authorize` request inside an iframe is not touched — `prompt=none` arrives unchanged |
+| **A3** | Fresh profile → no rule; after `storage.local.clear()` → no rule again |
+| **Z5** | The v1 endpoint (`/oauth2/authorize`) matches |
+| Rule acceptance | Chromium accepts the `regexFilter` (no unit test can prove that) |
+| Parameter fidelity | The portal's own parameters survive the transformation unchanged |
 
-**Was die E2E ausdrücklich nicht beweist:** irgendetwas über das echte ESTS, den PRT oder den Device Claim. Der Endpunkt ist ein Attrappe. Z1 (Silent Token Renewal in realen Portalen) bleibt manuell — die E2E zeigt nur, dass die Regel im iframe nicht greift, nicht dass die Token-Erneuerung insgesamt intakt ist.
+**What the e2e explicitly does not prove:** anything about the real ESTS, the PRT or the device claim. The endpoint is a decoy. Z1 (silent token renewal in real portals) stays manual — the e2e only shows that the rule does not match inside an iframe, not that token renewal as a whole is intact.
 
-## 2. Matrix: Portale × Zustände
+## 2. Matrix: portals × states
 
-Pro Kombination drei Fragen:
+Three questions per combination:
 
-- **A** — Landet die Anmeldung beim EADM?
-- **B** — Ist `deviceDetail.deviceId` im Sign-in-Log gefüllt? *(Device Claim erhalten → die Device-Claim-CA blockt nicht)*
-- **C** — Bricht Silent Token Renewal? *(muss **nein** sein)*
+- **A** — does the sign-in land on the admin account?
+- **B** — is `deviceDetail.deviceId` populated in the sign-in log? *(device claim intact → the device-claim CA does not block)*
+- **C** — does silent token renewal break? *(must be **no**)*
 
-Zustände: `S1` keine Session · `S2` EADM-Session aktiv · `S3` Workforce-PRT aktiv · `S4` nach Ablauf des Sign-in-Frequency-Intervalls der Admin-Session-Baseline
+States: `S1` no session · `S2` admin session active · `S3` workforce PRT active · `S4` after the sign-in-frequency interval of the admin session baseline has elapsed
 
 | Portal | S1 (A/B/C) | S2 (A/B/C) | S3 (A/B/C) | S4 (A/B/C) |
 | --- | --- | --- | --- | --- |
@@ -82,38 +82,38 @@ Zustände: `S1` keine Session · `S2` EADM-Session aktiv · `S3` Workforce-PRT a
 | Purview | | | | |
 | M365 Admin | | | | |
 
-Eintrag pro Zelle: `A✓ B✓ C✓` oder die konkrete Abweichung. Kein `n/a` ohne Begründung.
+One entry per cell: `A✓ B✓ C✓`, or the concrete deviation. No `n/a` without a reason.
 
-## 3. Nicht-verhandelbare Zusatzprüfungen
+## 3. Non-negotiable additional checks
 
-| # | Prüfung | Erwartung |
+| # | Check | Expectation |
 | --- | --- | --- |
-| Z1 🔴 | **Silent Token Renewal** — beliebiges M365-Portal offen lassen, Token-Lebensdauer überschreiten | Keine Re-Auth-Aufforderung, kein `interaction_required` in der Konsole. Bricht das, ist Constraint A1 verletzt |
-| Z2 🔴 | **Workforce-Profil-Regression** — dieselbe Extension, im Profil **nie aktiviert** | Keinerlei Verhaltensänderung. `getDynamicRules()` liefert `[]` |
-| ~~Z3~~ ✅ | **Redirect-Loop** | **Belegt 2026-08-17 durch die E2E:** Chromium überspringt einen Redirect, der eine identische URL ergäbe. Manuell nur noch stichprobenhaft gegen ein echtes Portal |
-| Z4 | **Fremdtenant** (z. B. `<test-tenant>.onmicrosoft.com`) — im Picker-Default | Über die Kontoauswahl erreichbar, ohne Zutun |
-| Z4b | **Fremdtenant** — im `login_hint`-Opt-in | Nur über den Toggle in der Options-Seite erreichbar; nach Wiedereinschalten greift die Regel sofort wieder |
-| Z5 | **v1-Endpunkt** — Portal mit `/oauth2/authorize` (ohne `v2.0`) | Regel greift |
-| Z5b | **`prompt=none` im main_frame** — nicht die iframe-Variante (die deckt A1 ab), sondern eine echte Top-Level-Navigation mit `prompt=none` | Die Regel ersetzt `none` durch `select_account` und macht aus einem stillen einen sichtbaren Flow. Nicht kaputt, aber überraschend. Beobachten, ob im Zielumfeld überhaupt ein Portal das tut — falls ja, ist es eine Design-Entscheidung, kein Bug |
-| Z6 | **WS-Federation** — bekannte Lücke (A9) | Regel greift **nicht**, Verhalten unverändert. Dokumentiert, kein Fehler |
+| Z1 🔴 | **Silent token renewal** — leave any M365 portal open, let the token lifetime elapse | No re-auth prompt, no `interaction_required` in the console. If that breaks, constraint A1 is violated |
+| Z2 🔴 | **Workforce-profile regression** — the same extension, in a profile where it was **never activated** | No change in behaviour whatsoever. `getDynamicRules()` returns `[]` |
+| ~~Z3~~ ✅ | **Redirect loop** | **Confirmed 2026-08-17 by the e2e:** Chromium skips a redirect that would produce an identical URL. Manually only as a spot check against a real portal |
+| Z4 | **Foreign tenant** — in the picker default | Reachable through the account chooser, with no further action |
+| Z4b | **Foreign tenant** — in the `login_hint` opt-in | Reachable only through the toggle in the configuration UI; after switching back on, the rule applies again immediately |
+| Z5 | **v1 endpoint** — a portal using `/oauth2/authorize` (without `v2.0`) | The rule applies |
+| Z5b | **`prompt=none` in the main frame** — not the iframe variant (A1 covers that), but a genuine top-level navigation carrying `prompt=none` | The rule replaces `none` with `select_account` and turns a silent flow into a visible one. Not broken, but surprising. Watch whether any portal in the target environment actually does this — if so, it is a design decision, not a bug |
+| Z6 | **WS-Federation** — the known gap (A9) | The rule does **not** apply, behaviour unchanged. Documented, not a defect |
 
-## 4. Durchlauf-Protokoll
+## 4. Run log
 
-| Datum | Extension-Version | Edge-Version | Umfang | Ergebnis | Durchgeführt von |
+| Date | Extension version | Edge version | Scope | Result | Performed by |
 | --- | --- | --- | --- | --- | --- |
-| 2026-08-17 | 0.1.0 | _nachzutragen_ | **V5** — Authorize-Requests von Azure, Defender, Power Automate auf die Domain im `redirect_uri` geprüft | 🟢 alle drei tragen sie. Nebenbefund: Defender nutzt den v1-Endpunkt, `/common/` und `/organizations/` kommen beide vor | D. H. + Claude |
-| 2026-08-17 | 0.1.0 | n/a (Chrome 152 headless) | E2E erweitert: Per-Site-Modell E1–E9, Konfigurations-UI auf **beiden** Oberflächen | grün, 38/38 | Claude, automatisiert |
-| 2026-08-17 | 0.0.0 (unpacked) | _nachzutragen_ | E2E gegen lokalen Fake-Endpunkt: Z3, V4, A1-Mechanismus, A3, Z5, Options-Seite | grün, 14/14 | Claude, automatisiert |
-| 2026-08-17 | 0.0.0 (unpacked) | _nachzutragen_ | **V2** — Device Claim im Sign-in-Log, Picker- **und** Hint-Modus | 🟢 `deviceDetail.deviceId` gefüllt, beide Modi | D. H. |
+| 2026-08-17 | 0.1.0 | *to be recorded* | **V5** — authorize requests from Azure, Defender and Power Automate checked for the domain inside `redirect_uri` | 🟢 all three carry it. Side finding: Defender uses the v1 endpoint, and both `/common/` and `/organizations/` occur | D. H. + Claude |
+| 2026-08-17 | 0.1.0 | n/a (Chrome 152 headless) | E2E extended: the per-site model E1–E9, the configuration UI on **both** surfaces | green, 38/38 | Claude, automated |
+| 2026-08-17 | 0.0.0 (unpacked) | *to be recorded* | E2E against the local fake endpoint: Z3, V4, the A1 mechanism, A3, Z5, the options page | green, 14/14 | Claude, automated |
+| 2026-08-17 | 0.0.0 (unpacked) | *to be recorded* | **V2** — device claim in the sign-in log, picker **and** hint mode | 🟢 `deviceDetail.deviceId` populated, both modes | D. H. |
 
-Bei einer eng begrenzten Änderung genügt die betroffene Zeile plus Z1 und Z2. Vor einem Ringwechsel im Rollout: die **vollständige** Matrix.
+For a tightly scoped change, the affected row plus Z1 and Z2 is enough. Before a ring change in the rollout: the **complete** matrix.
 
-## 5. Vorgehen je Zelle
+## 5. Procedure per cell
 
-1. Edge-Profil mit konfigurierter Extension, Zustand herstellen (Session löschen / EADM anmelden / Workforce-PRT aktiv / SIF ablaufen lassen)
-2. Portal-URL aufrufen
-3. **A** — angemeldetes Konto in der Portal-UI ablesen
-4. **B** — Entra Sign-in-Log → betreffender Eintrag → `deviceDetail.deviceId` gefüllt?
-5. **C** — Portal offen lassen, DevTools-Konsole auf `interaction_required` / fehlgeschlagene `prompt=none`-Requests beobachten
+1. An Edge profile with the extension configured; establish the state (clear the session / sign in the admin account / workforce PRT active / let the sign-in frequency elapse)
+2. Open the portal URL
+3. **A** — read the signed-in account off the portal UI
+4. **B** — Entra sign-in log → the relevant entry → is `deviceDetail.deviceId` populated?
+5. **C** — leave the portal open, watch the DevTools console for `interaction_required` and for failed `prompt=none` requests
 
-Für **B** genügt es nicht, dass die Anmeldung erfolgreich war: solange die Device-Claim-CA im Report-only-Zustand ist, beweist ein erfolgreicher Sign-in nicht, dass der Device Claim vorhanden war. Immer den Log-Eintrag selbst ansehen.
+For **B** it is not enough that the sign-in succeeded: as long as the device-claim CA is in report-only state, a successful sign-in does not prove that the device claim was present. Always look at the log entry itself.

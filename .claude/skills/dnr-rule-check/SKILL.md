@@ -55,7 +55,7 @@ RE2 has no lookaheads, so "match only if the parameter is absent" cannot be expr
 - [ ] With the parameter present but a **different value** (e.g. a portal that sends `prompt=login` itself), the rule replaces it → exactly one redirect, then identical → stop
 - [ ] The transform touches **only** the one parameter — any reordering or re-encoding of other query parameters produces a different URL string on every pass, which is a loop even though the parameters are semantically equal
 
-**This is an assumption, not a verified fact** (`docs/open-questions.md`, briefing §3.2). Until verified in a browser, treat "identical URL → no redirect" as unproven and check for `net::ERR_TOO_MANY_REDIRECTS` in the load check. Do not claim it works because the code looks right.
+**Verified 2026-08-17** by `tests/e2e/dnr.e2e.js` in a real browser: Chromium does not perform a redirect to an identical URL, and it does not fall through to the next matching rule afterwards (`docs/architecture.md` §4.2, `docs/verification-matrix.md` Z3). It is behaviour of a browser, not a contract — so a new rule still gets checked for `net::ERR_TOO_MANY_REDIRECTS` in the load check rather than being declared safe because the code looks right.
 
 ## 4. Endpoint coverage
 
