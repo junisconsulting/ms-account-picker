@@ -23,7 +23,7 @@ Kein Build-Step, keine Dependencies. Was in `src/` liegt, läuft im Browser.
 
 ```bash
 bash .claude/hooks/verify.sh   # Gate: manifest-JSON, node --check, Unit-Tests
-node --test tests/unit/        # Unit-Tests einzeln
+node --test tests/unit/*.test.js   # Unit-Tests einzeln
 ```
 
 Extension laden: `edge://extensions` → Entwicklermodus → **Entpackte Erweiterung laden** → Verzeichnis `src/`.

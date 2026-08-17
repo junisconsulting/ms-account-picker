@@ -41,7 +41,7 @@ Eine **Manifest-V3-Browser-Extension**, die im EADM-Profil den OAuth-Authorize-R
 
 **Beide sind gegenseitig ausschließend** — ein gesetzter `prompt=select_account` macht `login_hint` wirkungslos. „Picker, aber mit vorausgewähltem EADM" ist damit kein verfügbarer dritter Modus.
 
-**Entscheidung (2026-08-16):** Picker ist der Default und der verpflichtende Grundzustand. `login_hint` bleibt als Opt-in pro Profil erhalten, für Admins, die den Klick sparen wollen und keinen Fremdtenant brauchen.
+**Entscheidung (2026-08-17):** Picker ist der Default und der verpflichtende Grundzustand. `login_hint` bleibt als Opt-in pro Profil erhalten, für Admins, die den Klick sparen wollen und keinen Fremdtenant brauchen.
 
 Begründung:
 
@@ -83,7 +83,7 @@ Die verbindliche Fassung steht in `CLAUDE.md` (A1–A10). Hier die Begründungen
 - 🔴 **`resourceTypes: ["main_frame"]` ist Pflicht.** Silent Token Renewal läuft als `prompt=none` im versteckten iframe. Greift die Regel dort, bricht die Token-Erneuerung in **allen** M365-Portalen.
 - 🔴 **`regexFilter` nutzt RE2 — keine Lookaheads.** Der Loop-Schutz muss anders gelöst werden: eine identische Ziel-URL führt zu keinem Redirect. ⏳ Zu verifizieren, nicht zu unterstellen.
 - ⚠️ **v1- und v2-Endpunkt abdecken:** `/oauth2/authorize` und `/oauth2/v2.0/authorize`.
-- **Endpunkt-Aliase (`login.windows.net`, `login.microsoft.com`): bewusst nicht abgedeckt** (2026-08-16). Kein Portal im Zielumfeld nutzt sie erkennbar, und jeder Alias ist ein zusätzlicher `host_permissions`-Eintrag. Bei konkretem Bedarf: Host-Permission-Review, kein Bugfix.
+- **Endpunkt-Aliase (`login.windows.net`, `login.microsoft.com`): bewusst nicht abgedeckt** (2026-08-17). Kein Portal im Zielumfeld nutzt sie erkennbar, und jeder Alias ist ein zusätzlicher `host_permissions`-Eintrag. Bei konkretem Bedarf: Host-Permission-Review, kein Bugfix.
 - ⚠️ **WS-Federation (`/wsfed?`) kennt kein `prompt`.** Nicht abgedeckt — bekannte Lücke.
 - **Ohne explizite Aktivierung im Profil darf keine Regel registriert werden.** Die Extension ist dann funktional inaktiv. Das ermöglicht browserweiten Force-Install per Policy, ohne das Workforce-Profil zu beeinflussen. Das Gate ist ein Flag in `chrome.storage.local` (pro Profil), **nicht** der UPN — der Picker-Default braucht gar keinen UPN.
 
@@ -91,7 +91,7 @@ Die verbindliche Fassung steht in `CLAUDE.md` (A1–A10). Hier die Begründungen
 
 Das Problem existiert **nur im `login_hint`-Modus**: dort ist kein anderer Account mehr erreichbar — auch nicht der Test-Tenant `<test-tenant>.onmicrosoft.com`. Im Picker-Modus (Default) ist jeder Account über die Kontoauswahl erreichbar, ein Notausgang ist dort gegenstandslos.
 
-**Entscheidung (2026-08-16):** globaler Ein-/Ausschalter in der Options-Seite. Keine Tenant-Ausnahmeliste — sie bräuchte Tenant-Segment-Matching im `regexFilter` und damit zusätzliche RE2-Fläche in genau dem Teil des Codes, der bei jeder Änderung reviewpflichtig ist. Für einen Fall, der im Default-Modus gar nicht auftritt.
+**Entscheidung (2026-08-17):** globaler Ein-/Ausschalter in der Options-Seite. Keine Tenant-Ausnahmeliste — sie bräuchte Tenant-Segment-Matching im `regexFilter` und damit zusätzliche RE2-Fläche in genau dem Teil des Codes, der bei jeder Änderung reviewpflichtig ist. Für einen Fall, der im Default-Modus gar nicht auftritt.
 
 Der Schalter ist kein Rollback-Pfad auf Flottenebene — der läuft über die Policy, siehe `deployment.md` §5.
 

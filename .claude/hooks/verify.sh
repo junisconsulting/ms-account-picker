@@ -40,9 +40,10 @@ while IFS= read -r f; do
     || fail "Syntax error in $f: $ERR"
 done < <(find src tests -name '*.js' -type f 2>/dev/null)
 
-# 3. Unit tests, if any exist yet.
-if find tests/unit -name '*.test.js' -type f 2>/dev/null | grep -q .; then
-  OUT="$(node --test tests/unit/ 2>&1)" || fail "Unit tests failed:
+# 3. Unit tests, if any exist yet. Files are passed explicitly — `node --test`
+# with a directory argument resolves it as a module on node 22 and fails.
+if compgen -G 'tests/unit/*.test.js' >/dev/null; then
+  OUT="$(node --test tests/unit/*.test.js 2>&1)" || fail "Unit tests failed:
 $OUT"
 fi
 

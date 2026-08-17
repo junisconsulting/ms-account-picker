@@ -79,7 +79,7 @@ Reference pattern (RE2-clean, no capture groups, no lookaheads):
 | `/wsfed?` | WS-Federation knows no `prompt` — known gap (A9), do not try to cover it |
 | any host outside the ESTS host set | The regex must be anchored at `^https://` |
 
-**Aliases (A7):** `login.windows.net` and `login.microsoft.com` reach the same ESTS but are **deliberately out of scope** (decided 2026-08-16). A rule set that covers them is a finding, not a feature — each alias is another `host_permissions` entry and therefore a host-permission review. If a portal in the target environment turns out to use one, that is a decision for the user, not a fix.
+**Aliases (A7):** `login.windows.net` and `login.microsoft.com` reach the same ESTS but are **deliberately out of scope** (decided 2026-08-17). A rule set that covers them is a finding, not a feature — each alias is another `host_permissions` entry and therefore a host-permission review. If a portal in the target environment turns out to use one, that is a decision for the user, not a fix.
 
 ## 5. Rule hygiene
 

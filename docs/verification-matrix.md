@@ -58,6 +58,7 @@ Eintrag pro Zelle: `A✓ B✓ C✓` oder die konkrete Abweichung. Kein `n/a` ohn
 | Z4 | **Fremdtenant** (z. B. `<test-tenant>.onmicrosoft.com`) — im Picker-Default | Über die Kontoauswahl erreichbar, ohne Zutun |
 | Z4b | **Fremdtenant** — im `login_hint`-Opt-in | Nur über den Toggle in der Options-Seite erreichbar; nach Wiedereinschalten greift die Regel sofort wieder |
 | Z5 | **v1-Endpunkt** — Portal mit `/oauth2/authorize` (ohne `v2.0`) | Regel greift |
+| Z5b | **`prompt=none` im main_frame** — nicht die iframe-Variante (die deckt A1 ab), sondern eine echte Top-Level-Navigation mit `prompt=none` | Die Regel ersetzt `none` durch `select_account` und macht aus einem stillen einen sichtbaren Flow. Nicht kaputt, aber überraschend. Beobachten, ob im Zielumfeld überhaupt ein Portal das tut — falls ja, ist es eine Design-Entscheidung, kein Bug |
 | Z6 | **WS-Federation** — bekannte Lücke (A9) | Regel greift **nicht**, Verhalten unverändert. Dokumentiert, kein Fehler |
 
 ## 4. Durchlauf-Protokoll

@@ -48,6 +48,7 @@ Im Picker-Modus (`prompt=select_account`) entfällt dieser Punkt vollständig �
 
 | Datum | Umfang | Ergebnis | Reviewer |
 | --- | --- | --- | --- |
-| — | Phase 1: Struktur, kein Code | — | — |
+| 2026-08-17 | Phase-1-Scaffolding: neues `manifest.json`, Platzhalter in `src/` | Kein CRITICAL/HIGH. MEDIUM: kundenidentifizierende Werte im Repo → bereinigt (Tenant durch Platzhalter, Quelldokument gitignored). LOW: `minimum_chrome_version: 120` nicht gegen die Edge-Version der Zielflotte geprüft | Claude + D. H. |
+| 2026-08-17 | `src/lib/rules.js` — erste echte Regelbedingung, plus Unit-Tests | Kein CRITICAL/HIGH. LOW: `isValidUpn` lässt `+` und `;` durch — keine Injection möglich, aber ein `+` würde serverseitig zum Leerzeichen. Beim Load-Check prüfen, ob `queryTransform` kodiert | Claude + D. H. |
 
 Jeder Review nach Skill-Checkliste wird hier mit Datum, Diff-Umfang und Ergebnis eingetragen. Ein nicht eingetragener Review hat nicht stattgefunden.

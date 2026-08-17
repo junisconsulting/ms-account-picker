@@ -40,7 +40,7 @@ Run it from the repo root, **standalone**. It reads the Stop-hook payload from s
 | --- | --- |
 | `src/manifest.json` | `JSON.parse` — a broken manifest fails silently in the browser |
 | every `*.js` in `src/` and `tests/` | `node --check` |
-| `tests/unit/*.test.js` | `node --test tests/unit/` |
+| `tests/unit/*.test.js` | `node --test tests/unit/*.test.js` — a directory argument resolves as a module on node 22 and fails |
 
 The same script is wired as a `Stop` hook, so a red tree already blocks the turn from ending. Running it by hand only gets you the output sooner.
 
