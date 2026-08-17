@@ -54,8 +54,8 @@ Derived from the T0 classification (`docs/security-review.md`). Formulated as ru
 2. **No new dependency without an explicit decision by the user.** The extension ships zero runtime dependencies; that is a security property, not an accident.
 3. **The build is reproducible and its artifact hash is documented** (`docs/deployment.md`). A build that cannot be reproduced cannot be reviewed.
 4. **Version pinning in the deployment policy.** Never suggest auto-update.
-5. **Never commit real UPNs, tenant IDs, client IDs of customer tenants, or CRX signing keys.** Placeholder values in docs and tests only.
-6. **The EADM UPN appears in every authorize URL** → browser history, proxy logs (ZIA), possibly `Referer`. Not a new attack vector versus sign-in logs, but broader visibility. Name it in the documentation; never "solve" it by obfuscation.
+5. **The repository stays customer- and environment-neutral.** Never commit real UPNs, tenant IDs or names, customer client IDs, CRX signing keys — nor the customer's own identifiers: CA policy names, security group names, internal document versions, proxy or company names. Placeholders and generic descriptions only ("the device-claim CA", not its name). Describe the *role* an artefact plays; its name belongs to the environment, not to this repo.
+6. **The EADM UPN appears in every authorize URL** → browser history, proxy logs, possibly `Referer`. Not a new attack vector versus sign-in logs, but broader visibility. Name it in the documentation; never "solve" it by obfuscation.
 
 ## Verify Requirement
 
@@ -123,12 +123,11 @@ Before committing a change to rules, manifest, or permissions: run the `security
 
 | Term | Meaning |
 | --- | --- |
-| **EADM** | Enterprise Admin — cloud-only admin account, separate from the workforce identity (~500 at Hannover Re) |
+| **EADM** | Enterprise Admin — cloud-only admin account, separate from the workforce identity |
 | **PRT** | Primary Refresh Token — Windows-issued token that Edge injects into every profile; carries the device claim |
 | **DNR** | `declarativeNetRequest` — Chromium API for declarative request manipulation without reading request content |
 | **MV3** | Manifest V3 — current extension platform; service workers instead of background pages, no remote code |
 | **ESTS** | Evolved Security Token Service — the Entra ID token service behind `login.microsoftonline.com` |
 | **PKCE** | Proof Key for Code Exchange — `code_challenge`/`code_verifier`; the reason authorize URLs cannot be pre-built |
-| **CA106** | `CA106-ADM-AllApps-AnyOS-AnyCli-AnyLoc-ReqHybridJoined` — requires the device claim that the PRT supplies |
+| **Device-claim CA** | The Conditional Access policy that requires the device claim the PRT supplies. Its name differs per environment and is deliberately not recorded here |
 | **Auth Context** | Conditional-access authentication context — step-up trigger for sensitive actions |
-| **`grp-persona-admin`** | Security group carrying the EADM persona; target group of the CA policies |

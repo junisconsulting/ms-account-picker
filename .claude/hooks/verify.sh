@@ -10,9 +10,13 @@ set -u
 
 cd "${CLAUDE_PROJECT_DIR:-$(dirname "$0")/../..}" || exit 0
 
-# Stop-hook safeties, same as IDemFlow: never fight the gate.
+# Stop-hook safety: stand down when Claude is already inside a stop hook.
+# The payload arrives on stdin, so the read is bounded — without the timeout a
+# manual run that inherits an open stdin (a pipeline, a heredoc) blocks here.
+# ponytail: run this script standalone; do not chain it in front of a command
+# that needs stdin, it will consume that input.
 INPUT=""
-[ -t 0 ] || INPUT="$(cat 2>/dev/null || true)"
+[ -t 0 ] || INPUT="$(timeout 1 cat 2>/dev/null || true)"
 case "$INPUT" in *'"stop_hook_active":true'*) exit 0 ;; esac
 
 command -v node >/dev/null 2>&1 || exit 0

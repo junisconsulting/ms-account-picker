@@ -11,7 +11,7 @@ Diese vier Annahmen tragen das Design. Sie sind manuell und einmalig — solange
 | # | Annahme | Prüfung | Konsequenz bei negativ |
 | --- | --- | --- | --- |
 | V1 | `prompt=select_account` **plus** `login_hint` wählt das EADM im Picker vor | Authorize-URL eines Portals von Hand um beide Parameter ergänzen, aufrufen | Keine — es bleibt beim Picker ohne Vorauswahl (`open-questions.md` F1). Bei positiv: beide Anforderungen erfüllt, Modus-Design vereinfacht sich |
-| V2 🔴 | Device Claim (`deviceDetail.deviceId`) bleibt bei `prompt`/`login_hint` erhalten | Anmelden, dann Entra Sign-in-Log → Eintrag → `deviceDetail.deviceId` | `CA106` blockt im Erzwingungsmodus → Projekt trägt nicht. **Ein erfolgreicher Sign-in beweist das nicht**, solange `CA106` report-only ist |
+| V2 🔴 | Device Claim (`deviceDetail.deviceId`) bleibt bei `prompt`/`login_hint` erhalten | Anmelden, dann Entra Sign-in-Log → Eintrag → `deviceDetail.deviceId` | Die Device-Claim-CA blockt im Erzwingungsmodus → Projekt trägt nicht. **Ein erfolgreicher Sign-in beweist das nicht**, solange sie report-only ist |
 | V3 | `login_hint` überschreibt einen PRT für einen **anderen** User | Manuell, wie beim `select_account`-Test | `login_hint`-Modus entfällt ersatzlos, Picker bleibt einziger Modus |
 | V4 | `host_permissions` auf `login.microsoftonline.com` reicht für den Redirect aus | Extension laden, Regel greift ohne weitere Hosts | Initiator-Domains nötig → Governance-Neubewertung, siehe `security-review.md` §4 (Abbruchkriterium) |
 
@@ -29,10 +29,10 @@ Diese vier gehören in `tests/unit/` und laufen im Verify-Gate:
 Pro Kombination drei Fragen:
 
 - **A** — Landet die Anmeldung beim EADM?
-- **B** — Ist `deviceDetail.deviceId` im Sign-in-Log gefüllt? *(Device Claim erhalten → `CA106` blockt nicht)*
+- **B** — Ist `deviceDetail.deviceId` im Sign-in-Log gefüllt? *(Device Claim erhalten → die Device-Claim-CA blockt nicht)*
 - **C** — Bricht Silent Token Renewal? *(muss **nein** sein)*
 
-Zustände: `S1` keine Session · `S2` EADM-Session aktiv · `S3` Workforce-PRT aktiv · `S4` nach SIF-Ablauf (`CATA-01`, 8h/4h)
+Zustände: `S1` keine Session · `S2` EADM-Session aktiv · `S3` Workforce-PRT aktiv · `S4` nach Ablauf des Sign-in-Frequency-Intervalls der Admin-Session-Baseline
 
 | Portal | S1 (A/B/C) | S2 (A/B/C) | S3 (A/B/C) | S4 (A/B/C) |
 | --- | --- | --- | --- | --- |
@@ -76,4 +76,4 @@ Bei einer eng begrenzten Änderung genügt die betroffene Zeile plus Z1 und Z2. 
 4. **B** — Entra Sign-in-Log → betreffender Eintrag → `deviceDetail.deviceId` gefüllt?
 5. **C** — Portal offen lassen, DevTools-Konsole auf `interaction_required` / fehlgeschlagene `prompt=none`-Requests beobachten
 
-Für **B** genügt es nicht, dass die Anmeldung erfolgreich war: solange `CA106` im Report-only-Zustand ist, beweist ein erfolgreicher Sign-in nicht, dass der Device Claim vorhanden war. Immer den Log-Eintrag selbst ansehen.
+Für **B** genügt es nicht, dass die Anmeldung erfolgreich war: solange die Device-Claim-CA im Report-only-Zustand ist, beweist ein erfolgreicher Sign-in nicht, dass der Device Claim vorhanden war. Immer den Log-Eintrag selbst ansehen.

@@ -5,7 +5,7 @@ description: Blocking security review for the MS Account Picker extension. Manda
 
 # Security Review (blocking)
 
-This extension runs inside the authentication flow of ~500 privileged accounts. A change that swaps `prompt` for `redirect_uri` is a token-theft path that looks exactly like a feature commit. **T0 influence path** — see `docs/security-review.md`.
+This extension runs inside the authentication flow of privileged accounts. A change that swaps `prompt` for `redirect_uri` is a token-theft path that looks exactly like a feature commit. **T0 influence path** — see `docs/security-review.md`.
 
 This review is **blocking**. Not "recommended", not "when time allows". If it fails, the change does not get committed. You do not resolve findings on your own — you present them and the user decides.
 
@@ -58,7 +58,7 @@ The single most dangerous class of change in this repository.
 
 - [ ] The stored UPN never leaves `chrome.storage.local` except into the DNR rule
 - [ ] No real UPNs, tenant IDs, or customer client IDs in code, tests, docs, or commit messages — placeholders only
-- [ ] The UPN's visibility in browser history / proxy logs (ZIA) / `Referer` is documented in `docs/security-review.md` §Datenschutz and unchanged by this diff. If the change widens that exposure, say so explicitly
+- [ ] The UPN's visibility in browser history / proxy logs / `Referer` is documented in `docs/security-review.md` §Datenschutz and unchanged by this diff. If the change widens that exposure, say so explicitly
 
 ## 5. Supply chain
 

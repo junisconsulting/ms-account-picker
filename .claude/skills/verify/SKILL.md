@@ -32,7 +32,9 @@ State these criteria to the user before you implement. If a criterion cannot be 
 bash .claude/hooks/verify.sh     # exit 0 = green, exit 2 = red
 ```
 
-Run it from the repo root. **Exit 2 means not done** — read the stderr output, fix, run again. There is no "mostly fine" here.
+Run it from the repo root, **standalone**. It reads the Stop-hook payload from stdin, so chaining it in front of something that needs stdin (`verify.sh && git commit -F - <<'EOF'`) makes it eat that input — the read is timeout-bounded, so it no longer hangs, but the command behind it still starves.
+
+**Exit 2 means not done** — read the stderr output, fix, run again. There is no "mostly fine" here.
 
 | Checked | How |
 | --- | --- |

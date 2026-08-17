@@ -6,9 +6,9 @@
 
 Auf Hybrid-Joined-Windows-Clients injiziert Edge den Primary Refresh Token (PRT) des angemeldeten Workforce-Users in **jedes** Browser-Profil. Ein Admin, der in einem zweiten Edge-Profil mit seinem cloud-only Admin-Account (EADM) arbeiten will, wird dadurch automatisch in den Workforce-Account angemeldet.
 
-**Betroffene Population:** ~500 EADM-Accounts bei Hannover Re, perspektivisch Beratungskunden mit gleicher Konstellation.
+**Betroffene Population:** die EADM-Konten des Auftraggebers, perspektivisch weitere Kunden mit gleicher Konstellation.
 
-**Warum das nicht trivial ist:** Der PRT liefert gleichzeitig den Device Claim, den die Conditional-Access-Policy `CA106` (`ReqHybridJoined`) voraussetzt. Jede Lösung, die das SSO abschaltet, bricht die Gerätebindung.
+**Warum das nicht trivial ist:** Der PRT liefert gleichzeitig den Device Claim, den die Conditional-Access-Policy für Hybrid-Join (im Folgenden **Device-Claim-CA**) voraussetzt. Jede Lösung, die das SSO abschaltet, bricht die Gerätebindung.
 
 ## 2. Verworfene Alternativen
 
@@ -19,10 +19,10 @@ Nicht erneut vorschlagen. Jede Zeile ist bereits geprüft und aus dem genannten 
 | Edge-Setting „Automatically sign in to sites…" | Ist ein **Picker**-Schalter, kein SSO-Schalter. Versteckt nur die Auswahl |
 | Edge-Policy `AADWebSiteSSOUsingThisProfileEnabled` | `Per Profile: No` → trifft auch das Workforce-Profil |
 | `loginHint` in Portal-URLs | Nur Azure- und Entra-Portal unterstützen `/signin/index/@domain?loginHint=`. Defender, Fabric, SharePoint, Teams: kein Mechanismus |
-| EADM als zweites Windows-Work-Account | Admin-PRT im CloudAP-Cache der Standard-Workstation → Clean-Source-Verletzung (EAM Kap. 5). Vom Auftraggeber abgelehnt |
+| EADM als zweites Windows-Work-Account | Admin-PRT im CloudAP-Cache der Standard-Workstation → Clean-Source-Verletzung (Enterprise Access Model). Vom Auftraggeber abgelehnt |
 | CA-Block auf `MicrosoftAdminPortals` für Workforce | SSO findet trotzdem statt, Blockseite bietet keinen Kontowechsel |
 | Edge Custom Site Switch | Windows-Account erscheint in jedem Profil, Profilwechsel löst das nicht |
-| Firefox / Chrome ohne WAM | Kein Device Claim → `CA106` blockt |
+| Firefox / Chrome ohne WAM | Kein Device Claim → die Device-Claim-CA blockt |
 | Zweites Windows-Benutzerkonto / PAW / AVD | Strukturell korrekt, aber vom Auftraggeber als UX-untauglich verworfen |
 | Vorgebaute Authorize-URLs | Scheitert zwingend an PKCE und Single-Use-`state`. Getestet |
 
@@ -99,7 +99,7 @@ Der Schalter ist kein Rollback-Pfad auf Flottenebene — der läuft über die Po
 
 ### 7.1 Belegt
 
-- `prompt=select_account` unterbricht das PRT-basierte Auto-SSO zuverlässig. Manuell verifiziert am Azure-Portal-Request (`client_id=c44b4083-…`, `/organizations/oauth2/v2.0/authorize`).
+- `prompt=select_account` unterbricht das PRT-basierte Auto-SSO zuverlässig. Manuell verifiziert am Azure-Portal-Request (`/organizations/oauth2/v2.0/authorize`).
 - Der reale Request nutzt `/organizations/`, nicht `/common/` → das Tenant-Segment im Regex muss variabel sein.
 - Vorgebaute URLs scheitern an PKCE und Single-Use-`state`.
 
@@ -108,14 +108,22 @@ Der Schalter ist kein Rollback-Pfad auf Flottenebene — der läuft über die Po
 | Annahme | Verifikation |
 | --- | --- |
 | `login_hint` überschreibt einen PRT für einen **anderen** User | Manuell, wie beim `select_account`-Test |
-| Device Claim (`deviceDetail.deviceId`) bleibt bei `prompt`/`login_hint` erhalten | Sign-in-Log nach Anmeldung prüfen. Vom Auftraggeber als gegeben angenommen, weil `CA106` sonst blocken würde — im Report-only-Zustand von `CA106` ist das **keine** belastbare Ableitung und muss einmal explizit bestätigt werden |
+| Device Claim (`deviceDetail.deviceId`) bleibt bei `prompt`/`login_hint` erhalten | Sign-in-Log nach Anmeldung prüfen. Vom Auftraggeber als gegeben angenommen, weil die Device-Claim-CA sonst blocken würde — solange diese report-only ist, ist das **keine** belastbare Ableitung und muss einmal explizit bestätigt werden |
 | Kein Redirect-Loop bei bereits gesetztem Parameter | Integrationstest |
 | `host_permissions` auf `login.microsoftonline.com` reicht für Redirects aus | Integrationstest. Falls Initiator-Domains nötig sind → Governance-Neubewertung, siehe `security-review.md` §Abbruchkriterium |
 
 ## 8. Referenzen
 
-- CA-Naming-Convention v1.0 — Schema, Nummernkreise, `Resource`-Werte
-- EAM v2.9 — Kap. 5 (Clean Source), 8.10 (Passkey-Architektur), 8.11 (`CATA-*`-Baseline)
-- `CA106-ADM-AllApps-AnyOS-AnyCli-AnyLoc-ReqHybridJoined` — Device-Claim-Abhängigkeit
-- `CATA-01-ADMIN-BASE` — `Persistent browser session: Never persistent`, SIF 8h/4h
+Öffentlich:
+
 - MS Learn: `declarativeNetRequest`, `conditionalAccessApplications`, OIDC `prompt`-Parameter
+- Microsoft Enterprise Access Model — Clean-Source-Prinzip
+
+Umgebungsspezifisch (bewusst **nicht** in diesem Repository):
+
+- Die CA-Namenskonvention des Auftraggebers
+- Die Device-Claim-CA (Hybrid-Join-Anforderung) — ihr Name unterscheidet sich je Umgebung
+- Die Admin-Session-Baseline (nicht-persistente Browser-Session, Sign-in-Frequency)
+- Das interne Enterprise-Access-Model-Dokument
+
+Diese Artefakte haben ihren Lebenszyklus außerhalb der Extension. Wer sie braucht, findet sie beim Auftraggeber — in dieses Repo gehören sie nicht, weil es kunden- und umgebungsneutral bleiben soll.

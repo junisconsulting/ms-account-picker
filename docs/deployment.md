@@ -65,8 +65,8 @@ Jede ausgelieferte Version wird hier eingetragen. Eine Version ohne Eintrag ist 
 Vorschlag zur Abstimmung:
 
 1. **Ring 0** — Projektbeteiligte, manuell entpackt geladen. Verifikationsmatrix vollständig.
-2. **Ring 1** — kleine EADM-Pilotgruppe per Policy. Mindestens eine SIF-Ablauf-Periode (8h/4h, `CATA-01`) abwarten.
-3. **Ring 2** — alle ~500 EADM-Accounts.
+2. **Ring 1** — kleine EADM-Pilotgruppe per Policy. Mindestens eine Sign-in-Frequency-Periode der Admin-Session-Baseline abwarten.
+3. **Ring 2** — alle EADM-Accounts.
 
 Vor jedem Ringwechsel: Verifikationsmatrix grün, Security-Review eingetragen, Artefakt-Hash registriert.
 

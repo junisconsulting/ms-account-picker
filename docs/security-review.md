@@ -23,7 +23,7 @@ Damit ist die Build- und Auslieferungskette der Extension selbst ein T0-Asset. S
 | --- | --- | --- |
 | Regel-`action` | Umschreiben auf `redirect_uri` → Auth-Code landet beim Angreifer | Security-Review-Skill §2: nur `prompt`/`login_hint` in `addOrReplaceParams`, Ziel-Host == Request-Host |
 | `host_permissions` | Ausweitung auf Portal-Domains → Zugriff auf Session-tragende Requests | Erweiterung nur nach Rückfrage; siehe Abbruchkriterium |
-| Update-Kanal | Untergeschobene Version an 500 Admin-Profile | Self-hosted `update_url` auf interner Infrastruktur, gepinnte Version, signierte CRX |
+| Update-Kanal | Untergeschobene Version an alle Admin-Profile | Self-hosted `update_url` auf interner Infrastruktur, gepinnte Version, signierte CRX |
 | Service Worker | Nachladen von Code, Exfiltration des UPN | Kein `fetch`/`eval`/`chrome.scripting`; MV3-CSP; Review-Checkliste §3 |
 | Dependencies | Supply-Chain-Kompromittierung | Null Runtime-Dependencies. Jede Aufnahme ist eine explizite Entscheidung des Auftraggebers |
 | Repository | Signaturschlüssel oder echte Identifier im Klartext | `.gitignore` für `*.pem`/`*.crx`; keine echten UPNs/Tenant-IDs in Code, Tests, Docs, Commits |
@@ -36,7 +36,7 @@ Begründung: Eine Extension mit Leserechten auf den Portal-Domains sieht die aut
 
 ## 5. Datenschutz
 
-Der EADM-UPN erscheint in jeder Authorize-URL → Browser-Historie, Proxy-Logs (ZIA), ggf. `Referer`.
+Der EADM-UPN erscheint in jeder Authorize-URL → Browser-Historie, Proxy-Logs, ggf. `Referer`.
 
 Bewertung: **kein neuer Angriffsvektor** gegenüber den Sign-in-Logs, in denen derselbe UPN ohnehin steht — aber breitere Sichtbarkeit, insbesondere gegenüber Rollen mit Proxy-Log-Zugriff, die keinen Entra-Log-Zugriff haben.
 

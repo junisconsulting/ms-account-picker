@@ -19,11 +19,11 @@ Konsequenzen, die daraus folgen und nicht verhandelbar sind:
 - Es gibt **keinen** `3rdparty/extensions/<id>/policy`-Pfad. Die einzige Policy im Projekt ist `ExtensionSettings` für Force-Install und Versionspinning (`deployment.md` §2).
 - `chrome.storage.managed` wird nicht gelesen. Wer das später einführen will, muss beachten: eine Policy gilt für den OS-Benutzer, nicht für ein Edge-Profil — sie erreicht damit auch das Workforce-Profil und hebt die Trennung auf, auf der das Deployment beruht.
 - Die Aktivierung bleibt in jedem Fall ein Flag in `chrome.storage.local`, per Default aus (Constraint A3). Picker-Modus braucht keinen UPN, also kann der UPN nicht das Gate sein.
-- Der Einrichtungsschritt pro Admin ist damit gesetzt: Extension öffnen, aktivieren, ggf. UPN eintragen. Bei ~500 Admins ist das ein Onboarding-Thema, kein technisches — nicht konfigurierte Profile bleiben stumm inaktiv, nicht fehlerhaft.
+- Der Einrichtungsschritt pro Admin ist damit gesetzt: Extension öffnen, aktivieren, ggf. UPN eintragen. Bei der Größe der EADM-Population ist das ein Onboarding-Thema, kein technisches — nicht konfigurierte Profile bleiben stumm inaktiv, nicht fehlerhaft.
 
-### F5 — `CA110` → out of scope *(2026-08-16)*
+### F5 — Device-Registration-Block für EADM → out of scope *(2026-08-16)*
 
-`CA110-ADM-DeviceReg-AnyOS-AnyCli-AnyLoc-Block` (Device-Registration-Block für EADM) ist im Zielumfeld **noch nicht aktiv** und wie das gesamte CA-Design kundenindividuell. Weder verlinken noch mitverwalten — dieses Repository macht keine Aussage dazu.
+Die CA-Policy, die EADM-Konten die Device Registration verbietet, ist im Zielumfeld **noch nicht aktiv** und wie das gesamte CA-Design kundenindividuell. Weder verlinken noch mitverwalten — dieses Repository macht keine Aussage dazu.
 
 Zum Verständnis für später: Die Policy verhindert, dass ein EADM-Account sich an einem Gerät registriert und damit ein Admin-PRT in den CloudAP-Cache der Standard-Workstation gerät — die Clean-Source-Verletzung, die in `architecture.md` §2 als „EADM als zweites Windows-Work-Account" verworfen wurde. Für die Extension ist sie ohne Belang: sie ändert weder Regelform noch Permissions.
 
