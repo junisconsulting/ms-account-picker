@@ -9,6 +9,5 @@
 export const VENDOR = {
   name: "junis",
   website: "https://junis.de",
-  // TODO confirm the exact GitHub organisation slug before the first store upload.
-  repository: "https://github.com/junis-gmbh/ms-account-picker",
+  repository: "https://github.com/junisconsulting/ms-account-picker",
 };
