@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <title>MS Account Picker — Variant B: the switch, yellow branch taken</title>
+  <title>MS Account Picker — Variant B, dark ground: navy swapped for light ink</title>
   <!-- One sign-in comes in, two accounts are possible, the yellow branch is the
        one taken. Closest to the junis arc language without copying the mark.
        Two details that only matter at 16 px: the strokes are heavy and the mark
@@ -12,9 +12,9 @@
   <g transform="translate(256 256) scale(1.13) translate(-256 -256)">
   <path d="M256 292 C256 214 332 158 404 136" fill="none" stroke="#fcd218"
         stroke-width="88" stroke-linecap="round"/>
-  <path d="M256 292 C256 214 180 158 108 136" fill="none" stroke="#061838"
+  <path d="M256 292 C256 214 180 158 108 136" fill="none" stroke="#e9edf4"
         stroke-width="88" stroke-linecap="round"/>
-  <path d="M256 376 L256 288" fill="none" stroke="#061838"
+  <path d="M256 376 L256 288" fill="none" stroke="#e9edf4"
         stroke-width="88" stroke-linecap="round"/>
   </g>
 </svg>

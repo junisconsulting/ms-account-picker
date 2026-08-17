@@ -466,59 +466,116 @@ try {
     assert.deepEqual(registered[1].action, { type: "allow" });
   });
 
-  // The options page is the only configuration path in production. A broken save
-  // means a silently inert extension, which looks like nothing at all.
-  console.log("\nOptions page — the only configuration path");
-  // Start from an empty profile: the preceding block left site rules behind, and
-  // these checks assert on exact rule counts.
-  await cdp.evaluate("chrome.storage.local.clear()");
-  await sleep(300);
+  // --- the configuration UI, on BOTH surfaces ------------------------------
+  //
+  // The popup and the options page render the same module. Running the same
+  // checks against both is the direct proof that they really share it — and a
+  // broken save means a silently inert extension, which looks like nothing at all.
   const extId = sw.url.split("/")[2];
-  const tab = await fetch(
-    `http://127.0.0.1:${devtoolsPort}/json/new?${encodeURIComponent(`chrome-extension://${extId}/options/options.html`)}`,
-    { method: "PUT" },
-  ).then((r) => r.json());
-  await sleep(500);
-  const page = await Cdp.connect(tab.webSocketDebuggerUrl);
 
-  const fillAndSave = (mode, upnValue) =>
-    page.evaluate(`(() => {
-      document.getElementById('enabled').checked = true;
-      const radio = document.querySelector('input[name="mode"][value="${mode}"]');
-      radio.checked = true;
-      radio.dispatchEvent(new Event('change'));
-      document.getElementById('upn').value = ${JSON.stringify(upnValue)};
-      document.getElementById('save').click();
-      return true;
-    })()`);
+  async function checkConfigSurface(label, path) {
+    console.log(`\nConfiguration UI — ${label}`);
+    // Start from an empty profile: the preceding blocks left site rules behind and
+    // these checks assert on exact rule counts.
+    await cdp.evaluate("chrome.storage.local.clear()");
+    await sleep(300);
 
-  // A UPN carrying an extra parameter must never reach a rule — that is the
-  // whole point of the trust boundary in rules.js.
-  await fillAndSave("hint", "evil@contoso.com&redirect_uri=https://attacker.test");
-  await sleep(400);
-  await check("a UPN with a smuggled parameter is refused, no rule is written", async () => {
-    assert.deepEqual(await rules(), []);
-    const msg = await page.evaluate("document.getElementById('status').textContent");
-    assert.match(msg, /plain user@domain/);
-  });
+    const tab = await fetch(
+      `http://127.0.0.1:${devtoolsPort}/json/new?${encodeURIComponent(`chrome-extension://${extId}/${path}`)}`,
+      { method: "PUT" },
+    ).then((r) => r.json());
+    await sleep(600);
+    const page = await Cdp.connect(tab.webSocketDebuggerUrl);
 
-  await fillAndSave("hint", UPN);
-  await sleep(400);
-  await check("a valid configuration saved from the page produces the rule", async () => {
-    const saved = await rules();
-    assert.equal(saved.length, 1);
-    assert.deepEqual(
-      saved[0].action.redirect.transform.queryTransform.addOrReplaceParams,
-      [{ key: "login_hint", value: UPN }],
-    );
-  });
+    // There is no Save button by design — a popup closes on any outside click, so
+    // the UI commits on `change`. Driving it therefore means dispatching change.
+    const set = (script) => page.evaluate(`(() => { ${script} return true; })()`);
+    const text = (id) => page.evaluate(`document.getElementById('${id}').textContent`);
+    const commit = (id, value) =>
+      set(`const el = document.getElementById('${id}');
+           el.value = ${JSON.stringify(value)};
+           el.dispatchEvent(new Event('change'));`);
 
-  await page.evaluate("document.getElementById('enabled').checked = false; document.getElementById('save').click()");
-  await sleep(400);
-  await check("unchecking 'active in this profile' removes the rule", async () => {
-    assert.deepEqual(await rules(), []);
-  });
-  await fetch(`http://127.0.0.1:${devtoolsPort}/json/close/${tab.id}`);
+    await check(`${label}: renders the shared UI, with the manifest version`, async () => {
+      assert.match(await text("version"), /^v\d+\.\d+\.\d+$/);
+      assert.equal(
+        await page.evaluate("document.querySelectorAll('#site-list, #upn, #enabled').length"),
+        3,
+      );
+    });
+
+    await set(`const c = document.getElementById('enabled');
+               c.checked = true; c.dispatchEvent(new Event('change'));`);
+    await sleep(300);
+    await check(`${label}: activating the profile registers the default rule`, async () => {
+      const registered = await rules();
+      assert.equal(registered.length, 1);
+      assert.deepEqual(registered[0].action.redirect.transform.queryTransform.addOrReplaceParams, [
+        { key: "prompt", value: "select_account" },
+      ]);
+    });
+
+    // A UPN carrying an extra parameter must never reach a rule — the trust
+    // boundary from rules.js, reached through the UI this time.
+    await set(`const r = document.querySelector('input[name="mode"][value="hint"]');
+               r.checked = true; r.dispatchEvent(new Event('change'));`);
+    await commit("upn", "evil@contoso.com&redirect_uri=https://attacker.test");
+    await sleep(400);
+    await check(`${label}: a UPN with a smuggled parameter produces no rule`, async () => {
+      assert.deepEqual(await rules(), []);
+      assert.match(await text("status"), /no rule is active/);
+    });
+
+    await commit("upn", UPN);
+    await sleep(400);
+    await check(`${label}: a valid admin account produces the login_hint rule`, async () => {
+      const registered = await rules();
+      assert.equal(registered.length, 1);
+      assert.deepEqual(registered[0].action.redirect.transform.queryTransform.addOrReplaceParams, [
+        { key: "login_hint", value: UPN },
+      ]);
+    });
+
+    await commit("site-mode", "picker");
+    await set(`document.getElementById('site-domain').value = ${JSON.stringify(SITE_A)};
+               document.getElementById('site-add').click();`);
+    await sleep(400);
+    await check(`${label}: adding a site exception adds its guard and injection`, async () => {
+      const registered = await rules();
+      assert.equal(registered.length, 3, JSON.stringify(registered.map((r) => r.id)));
+      assert.equal(await page.evaluate("document.querySelectorAll('#site-list .site').length"), 1);
+      assert.equal(
+        await page.evaluate("document.querySelector('#site-list .dom').textContent"),
+        SITE_A,
+      );
+    });
+
+    await check(`${label}: an invalid domain is refused, nothing registered for it`, async () => {
+      await set(`document.getElementById('site-domain').value = 'a|b';
+                 document.getElementById('site-add').click();`);
+      await sleep(300);
+      assert.match(await text("status"), /plain domain/);
+      assert.equal((await rules()).length, 3);
+    });
+
+    await check(`${label}: removing the site removes its rules again`, async () => {
+      await set("document.querySelector('#site-list .rm').click();");
+      await sleep(400);
+      assert.equal((await rules()).length, 1);
+    });
+
+    await check(`${label}: deactivating the profile removes every rule`, async () => {
+      await set(`const c = document.getElementById('enabled');
+                 c.checked = false; c.dispatchEvent(new Event('change'));`);
+      await sleep(400);
+      assert.deepEqual(await rules(), []);
+    });
+
+    await fetch(`http://127.0.0.1:${devtoolsPort}/json/close/${tab.id}`);
+  }
+
+  await checkConfigSurface("popup", "popup/popup.html");
+  await checkConfigSurface("options page", "options/options.html");
 } finally {
   chrome.kill();
   server.close();

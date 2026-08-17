@@ -1,0 +1,161 @@
+/* Shared by the popup and the options page. Plain custom properties — no
+   framework, no bundler, no web font: an extension popup renders before any font
+   could load, and the CSP would block a remote one anyway.
+
+   Colours are junis navy and yellow, taken from the shipped logo assets. The
+   accent swaps per theme on purpose: navy carries an accent on white but
+   disappears on a dark ground, where yellow does the job. */
+
+:root {
+  --navy: #061838;
+  --yellow: #fcd218;
+
+  --bg: #ffffff;
+  --panel: #f5f7fa;
+  --line: #dfe4ec;
+  --text: #0d1526;
+  --muted: #5b6675;
+  --accent: var(--navy);
+  --danger: #b3261e;
+  --warn: #8a5300;
+  --radius: 8px;
+}
+
+.hdr .logo.dark { content: image-set(url("../icons/icon-48-dark.png") 1x); }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #10151f;
+    --panel: #171f2d;
+    --line: #27313f;
+    --text: #e9edf4;
+    --muted: #98a4b6;
+    --accent: var(--yellow);
+    --danger: #f2b8b5;
+    --warn: #f5c46b;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 14px;
+  min-width: 23rem;
+  max-width: 34rem;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* --- header --------------------------------------------------------------- */
+
+.hdr { display: flex; align-items: center; gap: 10px; }
+.hdr .logo {
+  width: 30px; height: 30px; flex: none;
+  /* The mark is navy and yellow. On a dark ground the navy half disappears, so
+     the header uses a variant whose navy is swapped for light ink — still
+     two-tone, which is what the junis logo rules actually require. */
+  content: image-set(url("../icons/icon-48.png") 1x);
+}
+.hdr-text { flex: 1; min-width: 0; }
+.hdr h1 { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: -0.01em; }
+.hdr .sub { margin: 1px 0 0; font-size: 11.5px; color: var(--muted); }
+.ver {
+  flex: none; align-self: flex-start;
+  font: 500 10.5px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--muted); border: 1px solid var(--line);
+  border-radius: 999px; padding: 3px 7px;
+}
+
+/* --- cards --------------------------------------------------------------- */
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.card h2 {
+  margin: 0; font-size: 10.5px; font-weight: 650; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--muted);
+}
+.card h2:not(:first-child) { margin-top: 4px; }
+
+/* A deactivated profile has nothing to configure — dim it rather than hide it,
+   so the shape of the settings stays visible. */
+.card.dim { opacity: .45; }
+
+.row { display: flex; gap: 9px; align-items: flex-start; cursor: pointer; }
+.row input { margin: 2px 0 0; flex: none; accent-color: var(--accent); }
+.row .grow { display: flex; flex-direction: column; }
+.row small, .hint { color: var(--muted); font-size: 11.5px; }
+
+.fld { font-weight: 600; font-size: 12px; }
+
+input[type="email"], input[type="text"], select {
+  font: inherit;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  min-width: 0;
+}
+input:focus-visible, select:focus-visible, button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+input[type="email"] { width: 100%; }
+input.invalid { border-color: var(--danger); }
+
+button {
+  font: inherit; font-weight: 600;
+  color: var(--bg); background: var(--accent);
+  border: 1px solid transparent; border-radius: 6px;
+  padding: 6px 12px; cursor: pointer;
+}
+button:hover { filter: brightness(1.1); }
+
+/* --- site list ----------------------------------------------------------- */
+
+.sites { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 13rem; overflow-y: auto; }
+.sites:empty { display: none; }
+.site {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg); border: 1px solid var(--line);
+  border-radius: 6px; padding: 5px 5px 5px 9px;
+}
+.site .dom {
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 500 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.site select { padding: 3px 6px; font-size: 12px; }
+.site .rm {
+  flex: none; width: 24px; height: 24px; padding: 0; line-height: 1;
+  font-size: 15px; color: var(--muted); background: transparent; border-color: var(--line);
+}
+.site .rm:hover { color: var(--danger); border-color: var(--danger); filter: none; }
+
+.addrow { display: flex; gap: 6px; }
+.addrow input { flex: 1; min-width: 0; }
+
+/* --- status and footer --------------------------------------------------- */
+
+.status { margin: 0; min-height: 1.35em; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.status.err { color: var(--danger); }
+.status.warn { color: var(--warn); }
+
+.ftr {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
+  font-size: 11px; color: var(--muted);
+  border-top: 1px solid var(--line); padding-top: 9px;
+}
+.ftr .rules { font-variant-numeric: tabular-nums; }
+.ftr a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
