@@ -80,7 +80,7 @@ const TEMPLATE = `
 </section>
 
 <details class="card cfg">
-  <summary>Exceptions for specific sites<span class="count" id="site-count"></span></summary>
+  <summary>Exceptions for specific sites<span id="site-count"></span></summary>
   <small class="hint">A site you use with more than one account usually wants the picker even
     when direct sign-in is the default. Enter the exact host, like
     <code>make.powerautomate.com</code> — a parent domain does not cover its subdomains.</small>
