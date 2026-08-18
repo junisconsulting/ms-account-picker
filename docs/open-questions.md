@@ -4,7 +4,17 @@
 
 ## Open
 
-*(none at the moment — every question raised so far is decided)*
+### F8 — Should a live portal session be forced back through the picker? *(raised 2026-08-18)*
+
+Observed at `make.powerautomate.com`: once signed in, opening the portal in a new tab lands in the application directly. Neither picker nor direct sign-in takes effect, because no authorize request is made at all (`architecture.md` §5.1). Switching accounts works, but only through the portal's own account menu.
+
+The question is whether the extension should reach into that state, and the three answers cost very different things:
+
+1. **Accept the boundary.** The extension governs which account you sign in as, not whether you are asked. Costs nothing, changes nothing, and leaves the portal's account menu as the way out.
+2. **Offer a sign-out action in the popup.** A button that opens the ESTS logout endpoint. It needs **no new permission** — `login.microsoftonline.com` is already covered and `chrome.tabs.create` requires none. It does not force anything automatically; it makes the switch one click, after which the next sign-in runs through the extension's rule again. Unverified: whether the ESTS logout reliably tears down a portal's own application session.
+3. **Enforce it on every portal visit.** Requires matching the navigation to the portal domain, therefore `host_permissions` on the portal domains — the project's stop criterion (`security-review.md` §4). It would also mean signing the user out repeatedly, which is a different product.
+
+Undecided. Option 3 is not to be built without a new risk assessment (A4).
 
 ## Decided
 

@@ -108,6 +108,18 @@ The binding version is in `CLAUDE.md` (A1–A10). The reasoning:
 - ⚠️ **WS-Federation (`/wsfed?`) has no `prompt`.** Not covered — a known gap.
 - **Without explicit activation in the profile, no rule may be registered.** The extension is then functionally inert. That is what makes a browser-wide force-install possible without affecting the workforce profile. The gate is a flag in `chrome.storage.local` (per profile), **not** the UPN — the picker default needs no UPN at all.
 
+### 5.1 The boundary: an existing portal session
+
+The extension augments an authorize request that is **in flight**. Where there is no authorize request, there is nothing to augment.
+
+That is exactly the state after a successful sign-in. A portal such as Power Automate keeps its own application session — cookies on its own origin plus the MSAL token cache in that origin's browser storage. Opening the portal in a new tab then loads the application directly: MSAL finds a valid token in its cache, and where it needs a fresh one it fetches it silently as `prompt=none` in a hidden iframe, which A1 excludes on purpose (matching there breaks token renewal in every M365 portal).
+
+Stated plainly: **the extension decides which account you sign in as, not whether you are asked to sign in at all.** While a portal session is alive, switching accounts is the portal's own business. The account menu ("sign in with a different account") is the path, and it produces a fresh authorize request — at which point the rule applies again and the configured mode takes effect.
+
+Reaching into that state would mean matching the navigation to the portal domain itself, and therefore `host_permissions` on the portal domains. That is the project's stop criterion (`security-review.md` §4), not a feature increment. The decision is recorded as F8 in `open-questions.md`.
+
+Reported from real use on 2026-08-18, at `make.powerautomate.com` with a live session.
+
 ## 6. Escape hatch
 
 The problem only exists **in `login_hint` mode**: there, no other account is reachable, not even a test tenant. In picker mode (the default) every account is reachable through the account chooser, so an escape hatch has nothing to do.

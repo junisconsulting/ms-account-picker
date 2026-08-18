@@ -95,6 +95,7 @@ One entry per cell: `A✓ B✓ C✓`, or the concrete deviation. No `n/a` withou
 | Z4b | **Foreign tenant** — in the `login_hint` opt-in | Reachable only through the toggle in the configuration UI; after switching back on, the rule applies again immediately |
 | Z5 | **v1 endpoint** — a portal using `/oauth2/authorize` (without `v2.0`) | The rule applies |
 | Z5b | **`prompt=none` in the main frame** — not the iframe variant (A1 covers that), but a genuine top-level navigation carrying `prompt=none` | The rule replaces `none` with `select_account` and turns a silent flow into a visible one. Not broken, but surprising. Watch whether any portal in the target environment actually does this — if so, it is a design decision, not a bug |
+| Z7 | **Live portal session** — sign in to a portal, then open it again in a new tab | The portal loads straight away and **no** rule fires: there is no authorize request to augment (`architecture.md` §5.1). Not a defect of the rule — the boundary of the mechanism. The account menu produces a fresh authorize request, and there the configured mode applies again |
 | Z6 | **WS-Federation** — the known gap (A9) | The rule does **not** apply, behaviour unchanged. Documented, not a defect |
 
 ## 4. Run log
