@@ -113,4 +113,4 @@ Any change to `permissions`, `host_permissions`, or `declarative_net_request` �
 
 - No linter, no formatter, no type checker exists in this project — do not invent one.
 - E2E never touches real ESTS. `tests/e2e/dnr.e2e.js` drives a loaded extension against a local fake endpoint; a test that signs in for real would be a credential leak waiting to happen. Keep it that way.
-- Over-engineering review (`/ponytail-review`) is deliberately not part of verify — it is a pre-commit judgment pass on the final diff, not a pass/fail check.
+- **`/ponytail-review`** — required before committing a multi-file feature (`CLAUDE.md`, Commit Style), but deliberately not run *here*: verify is a deterministic pass/fail gate, and an over-engineering finding is a judgment about a finished diff. Not being part of verify does not make it optional.

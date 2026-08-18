@@ -136,7 +136,12 @@ Three consequences that follow from the licence and are not style preferences:
 
 Conventional commits: `feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`
 
-Before committing a change to rules, manifest, or permissions: run the `security-review` skill, decide each finding with the user, then commit.
+Two reviews sit before a commit, and they answer different questions:
+
+- **`security-review`** — on any change to rules, `src/manifest.json`, or permissions. **Blocking**: a finding stops the commit until it is decided with the user.
+- **`/ponytail-review`** — on any multi-file feature, before committing. A judgment pass on the finished diff: what could be deleted, what was built that nobody asked for, what reinvents something already in the repo. Findings are decided with the user, never resolved alone.
+
+Neither belongs in `verify`. Verify is a deterministic pass/fail gate; these are judgments about a finished diff, and a gate that starts judging stops being a gate. **Not being part of verify does not make either of them optional.**
 
 ## Glossary
 
