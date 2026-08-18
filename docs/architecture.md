@@ -118,6 +118,8 @@ Stated plainly: **the extension decides which account you sign in as, not whethe
 
 Reaching into that state would mean matching the navigation to the portal domain itself, and therefore `host_permissions` on the portal domains. That is the project's stop criterion (`security-review.md` §4), not a feature increment. The decision is recorded as F8 in `open-questions.md`.
 
+**What the extension does offer for it** (F8, 2026-08-18): a sign-out link in the configuration UI, pointing at the ESTS logout endpoint. It enforces nothing — it hands the next sign-in back to the rule, in one click instead of through the portal's account menu. It needs no new permission, because `login.microsoftonline.com` is already covered and a plain link needs no API.
+
 Reported from real use on 2026-08-18, at `make.powerautomate.com` with a live session.
 
 ## 6. Escape hatch

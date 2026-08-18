@@ -504,6 +504,15 @@ try {
       );
     });
 
+    // The one element in this UI that navigates away from the extension. Assert the
+    // exact URL: a typo, or a future edit, must not be able to point it elsewhere.
+    await check(`${label}: the sign-out link points at the ESTS logout endpoint`, async () => {
+      assert.equal(
+        await page.evaluate("document.getElementById('signout').href"),
+        "https://login.microsoftonline.com/common/oauth2/v2.0/logout",
+      );
+    });
+
     await set(`const c = document.getElementById('enabled');
                c.checked = true; c.dispatchEvent(new Event('change'));`);
     await sleep(300);

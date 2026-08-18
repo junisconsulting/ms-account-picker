@@ -7,6 +7,12 @@
 // all a stored domain, which is user-supplied text — reaches the DOM through
 // textContent or a form property, never through concatenated markup.
 //
+// The sign-out action is a plain <a href> to a fixed ESTS endpoint, deliberately
+// not chrome.tabs.create: a link needs no API and no permission, and it keeps the
+// URL inside the static template, where the no-interpolation rule already covers
+// it. It exists because a site with a live session never asks again, so no rule of
+// this extension can reach it (docs/architecture.md 5.1).
+//
 // isValidUpn and isValidDomain are imported from the rule builder rather than
 // reimplemented here. If this file had its own copy and the two drifted, the UI
 // would accept a value the builder refuses, and the result is the worst failure
@@ -82,6 +88,13 @@ const TEMPLATE = `
     </select>
     <button type="button" id="site-add">Add</button>
   </div>
+
+  <h2>Already signed in somewhere?</h2>
+  <small class="hint">A site you are already signed in to does not ask again, so nothing above
+    can apply to it. Sign out of Microsoft and the next sign-in comes back through these
+    settings.</small>
+  <a class="btn" id="signout" href="https://login.microsoftonline.com/common/oauth2/v2.0/logout"
+     target="_blank" rel="noopener">Sign out of Microsoft</a>
 </section>
 
 <p class="status" id="status" role="status"></p>

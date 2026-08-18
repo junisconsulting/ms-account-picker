@@ -4,19 +4,21 @@
 
 ## Open
 
-### F8 — Should a live portal session be forced back through the picker? *(raised 2026-08-18)*
-
-Observed at `make.powerautomate.com`: once signed in, opening the portal in a new tab lands in the application directly. Neither picker nor direct sign-in takes effect, because no authorize request is made at all (`architecture.md` §5.1). Switching accounts works, but only through the portal's own account menu.
-
-The question is whether the extension should reach into that state, and the three answers cost very different things:
-
-1. **Accept the boundary.** The extension governs which account you sign in as, not whether you are asked. Costs nothing, changes nothing, and leaves the portal's account menu as the way out.
-2. **Offer a sign-out action in the popup.** A button that opens the ESTS logout endpoint. It needs **no new permission** — `login.microsoftonline.com` is already covered and `chrome.tabs.create` requires none. It does not force anything automatically; it makes the switch one click, after which the next sign-in runs through the extension's rule again. Unverified: whether the ESTS logout reliably tears down a portal's own application session.
-3. **Enforce it on every portal visit.** Requires matching the navigation to the portal domain, therefore `host_permissions` on the portal domains — the project's stop criterion (`security-review.md` §4). It would also mean signing the user out repeatedly, which is a different product.
-
-Undecided. Option 3 is not to be built without a new risk assessment (A4).
+*(none at the moment — every question raised so far is decided)*
 
 ## Decided
+
+### F8 — Live portal session → a sign-out action, not enforcement *(2026-08-18)*
+
+Observed at `make.powerautomate.com`: once signed in, opening the portal in a new tab lands in the application directly. Neither picker nor direct sign-in takes effect, because no authorize request is made at all (`architecture.md` §5.1).
+
+**Decision: a sign-out link in the configuration UI.** It opens the ESTS logout endpoint in a tab. It forces nothing automatically; it turns the switch into one click, after which the next sign-in runs through the extension's rule again and the configured mode applies.
+
+It costs **no new permission**: `login.microsoftonline.com` is already in `host_permissions`, and a plain `<a href target="_blank">` needs no API at all — which is why it is not `chrome.tabs.create`. The URL is a fixed literal inside the static template and is pinned by an e2e assertion on both surfaces, so it cannot drift to another host unnoticed.
+
+**Not decided this way:** enforcing the mode on every portal visit. That would mean matching the navigation to the portal domain itself, and therefore `host_permissions` on the portal domains — the project's stop criterion (`security-review.md` §4). It would also sign the user out repeatedly, which is a different product from an account picker. If the need ever becomes concrete, it is a new risk assessment, not a bugfix (A4).
+
+**Open within this decision:** whether the ESTS logout reliably tears down a portal's own application session, or only the ESTS session. If it only clears ESTS, the button helps less than it promises — the portal would keep serving its cached token until it expires. → `verification-matrix.md` Z8.
 
 ### F3 — Configuration source → manual entry in the extension UI *(2026-08-17)*
 
