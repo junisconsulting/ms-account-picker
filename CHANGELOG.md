@@ -12,6 +12,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.10.0] — 2026-08-18
+
 **Rules and permissions:** no change. The manifest, the rule builder and the service worker are untouched — this is the configuration surface only.
 
 ### Changed
@@ -33,6 +37,11 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   "default" only means something once you know exceptions exist.
 - Adding a site exception puts the host field on its own line. At the popup's
   minimum width it used to be clipped mid-hostname.
+
+### Internal
+
+- The disclosure marker is the browser's own again; eleven lines of CSS had been
+  rebuilding it. No visible change.
 
 ## [0.9.0] — 2026-08-18
 
