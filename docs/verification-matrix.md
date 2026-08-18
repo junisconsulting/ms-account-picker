@@ -102,6 +102,7 @@ One entry per cell: `A✓ B✓ C✓`, or the concrete deviation. No `n/a` withou
 | ~~Z8~~ ✅ | **Sign-out link** — with a live portal session, use the link in the configuration UI, then open the portal again | **Confirmed 2026-08-18, manually.** The portal asks again and the configured mode applies. One exception measured: `make.powerautomate.com` keeps its own application session past the ESTS logout and only releases it after a **browser restart**. Sign out, restart, and the rule applies there too. Named in the UI, because otherwise it reads as the extension being broken |
 | Z7 | **Live portal session** — sign in to a portal, then open it again in a new tab | The portal loads straight away and **no** rule fires: there is no authorize request to augment (`architecture.md` §5.1). Not a defect of the rule — the boundary of the mechanism. The account menu produces a fresh authorize request, and there the configured mode applies again |
 | Z6 | **WS-Federation** — the known gap (A9) | The rule does **not** apply, behaviour unchanged. Documented, not a defect |
+| Z10 | **Only the sites I list** — configure two portals, then sign in to a **third** one that is not on the list | The third portal signs in with no parameter added, exactly as it would without the extension. This is the mode working, not failing — and it is the check that shows an administrator what the inverted failure direction feels like before they deploy it (`architecture.md` §3.1.1). Verify at the same time that the two listed portals still get their parameter |
 
 ## 4. Run log
 

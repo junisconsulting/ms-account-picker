@@ -452,6 +452,27 @@ try {
     assert.equal(registered[0].id, 1);
   });
 
+  console.log("\nE8 — 'only the sites I list': the list is the whole reach");
+  await configure({
+    enabled: true,
+    mode: "listed",
+    upn: UPN,
+    sites: [{ domain: SITE_A, mode: "hint" }],
+  });
+  const e8listed = authorizeOnly(await navigate(devtoolsPort, authorizeFor(SITE_A)));
+  const e8other = authorizeOnly(await navigate(devtoolsPort, authorizeFor(SITE_B)));
+  await check("the listed site gets its parameter", () => {
+    assert.equal(e8listed.length, 1, `saw ${e8listed.length}: ${e8listed.join(" | ")}`);
+    assert.match(e8listed[0], /[?&]login_hint=/);
+  });
+  // The whole point of the mode, and the claim worth the most: everything not on
+  // the list reaches ESTS exactly as the portal built it.
+  await check("an unlisted site is left exactly as the portal built it", () => {
+    assert.equal(e8other.length, 1, `saw ${e8other.length}: ${e8other.join(" | ")}`);
+    assert.doesNotMatch(e8other[0], /[?&]prompt=/);
+    assert.doesNotMatch(e8other[0], /[?&]login_hint=/);
+  });
+
   console.log("\nE9 — two saves in quick succession converge on the last one");
   await cdp.evaluate(`
     chrome.storage.local.set({ enabled: true, mode: "picker", upn: "${UPN}", sites: [
@@ -609,6 +630,46 @@ try {
       await set("document.querySelector('#site-list .rm').click();");
       await sleep(400);
       assert.equal((await rules()).length, 1);
+    });
+
+    // The inverted mode. Its failure direction is the opposite of every other
+    // mode's — a site that does not match is left alone instead of falling back
+    // to the picker — so both halves are pinned: an empty list must arm nothing
+    // AND say so, and a listed site must get its injection with no base rule
+    // behind it.
+    await set(`const r = document.querySelector('input[name="mode"][value="listed"]');
+               r.checked = true; r.dispatchEvent(new Event('change'));`);
+    await sleep(400);
+    await check("'only the sites I list' with an empty list registers nothing", async () => {
+      assert.deepEqual(await rules(), []);
+      assert.match(await text("status"), /No sites listed/);
+    });
+
+    await set(`document.getElementById('site-domain').value = ${JSON.stringify(SITE_B)};
+               document.getElementById('site-add').click();`);
+    await sleep(400);
+    await check("a listed site gets its injection, with no base rule behind it", async () => {
+      const registered = await rules();
+      assert.equal(registered.length, 1, JSON.stringify(registered.map((r) => r.id)));
+      assert.ok(registered[0].id >= 2000, `expected a site injection, got id ${registered[0].id}`);
+      assert.deepEqual(registered[0].action.redirect.transform.queryTransform.addOrReplaceParams, [
+        { key: "prompt", value: "select_account" },
+      ]);
+    });
+
+    // One stored account name, used by every site on direct sign-in (architecture.md §4.2).
+    await check("a site set to direct sign-in exposes the account field", async () => {
+      assert.equal(
+        await page.evaluate("document.getElementById('account').hidden"), true,
+        "hidden while no direct sign-in is configured anywhere",
+      );
+      await set(`const s = document.querySelector('#site-list .mode');
+                 s.value = 'hint'; s.dispatchEvent(new Event('change'));`);
+      await sleep(400);
+      assert.equal(
+        await page.evaluate("document.getElementById('account').hidden"), false,
+        "a site on direct sign-in must expose the account field it depends on",
+      );
     });
 
     await check("deactivating the profile removes every rule", async () => {

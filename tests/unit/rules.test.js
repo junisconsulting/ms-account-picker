@@ -112,6 +112,7 @@ test("resourceTypes is exactly [main_frame] for every rule produced", () => {
     PICKER,
     HINT,
     { ...HINT, sites: [{ domain: SITE, mode: "picker" }, { domain: "other.example", mode: "off" }] },
+    { enabled: true, mode: "listed", upn: HINT.upn, sites: [{ domain: SITE, mode: "hint" }] },
   ];
   for (const config of configs) {
     const rules = buildRules(config);
@@ -346,11 +347,62 @@ test("hint mode produces no rule when the UPN is unusable", () => {
 });
 
 test("an unknown site mode falls back to the picker", () => {
-  for (const mode of [undefined, "", "PICKER", "nonsense"]) {
+  // "listed" is a GLOBAL mode. Reaching this list as a site mode must not switch
+  // that site off — it is narrowed to the picker like any other unknown value.
+  for (const mode of [undefined, "", "PICKER", "nonsense", "listed"]) {
     const rules = buildRules({ ...PICKER, sites: [{ domain: SITE, mode }] });
     assert.equal(rules.length, 3, `mode ${String(mode)}`);
     assert.deepEqual(paramsOf(rules[2]), [{ key: "prompt", value: "select_account" }]);
   }
+});
+
+// --- the "listed" global mode -----------------------------------------------
+//
+// The inversion of the normal model: no global default, only the configured
+// sites. Its failure direction is the opposite of every other mode's — a site
+// that fails to match is left untouched instead of falling back to the picker —
+// which is why the boundaries below are pinned rather than assumed.
+
+test("listed mode with no sites registers nothing at all", () => {
+  assert.deepEqual(buildRules({ enabled: true, mode: "listed" }), []);
+  assert.deepEqual(buildRules({ enabled: true, mode: "listed", sites: [] }), []);
+  assert.deepEqual(buildRules({ enabled: true, mode: "listed", upn: HINT.upn, sites: [] }), []);
+});
+
+test("listed mode emits the site injections and no base rule", () => {
+  const rules = buildRules({
+    enabled: true,
+    mode: "listed",
+    upn: HINT.upn,
+    sites: [{ domain: SITE, mode: "picker" }, { domain: "other.example", mode: "hint" }],
+  });
+
+  // The id list carries it: no RULE_ID means no base rule, and with no base rule
+  // there is nothing for a guard to hold off — so no allow rule either.
+  assert.deepEqual(rules.map((rule) => rule.id), [SITE_RULE_ID_BASE, SITE_RULE_ID_BASE + 1]);
+  assert.deepEqual(paramsOf(rules[0]), [{ key: "prompt", value: "select_account" }]);
+  assert.deepEqual(paramsOf(rules[1]), [{ key: "login_hint", value: HINT.upn }]);
+  assert.equal(rules[0].condition.regexFilter, siteRegexFilter(SITE));
+});
+
+test("listed mode leaves a site set to 'off' entirely alone", () => {
+  // With no global default there is nothing for that site to be exempted from,
+  // so it must produce no rule — not an allow rule that does nothing.
+  assert.deepEqual(buildRules({ enabled: true, mode: "listed", sites: [{ domain: SITE, mode: "off" }] }), []);
+});
+
+test("listed mode drops a hint site with no usable UPN instead of falling back", () => {
+  // The one place where the inverted failure direction bites: in picker mode this
+  // site would land on the base rule. Here there is no base rule, so the result
+  // is genuinely nothing — the UI has to say so, and reportEffect() does.
+  const rules = buildRules({
+    enabled: true,
+    mode: "listed",
+    upn: "",
+    sites: [{ domain: SITE, mode: "hint" }, { domain: "other.example", mode: "picker" }],
+  });
+  assert.equal(rules.length, 1);
+  assert.equal(rules[0].condition.regexFilter, siteRegexFilter("other.example"));
 });
 
 // --- one bad entry must never disarm the extension --------------------------
@@ -392,14 +444,15 @@ test("domains are normalised and deduplicated, first occurrence wins", () => {
 // --- structural guards: the security-review checklist, executable ------------
 
 test("every rule is either an allow or a queryTransform redirect", () => {
-  const rules = buildRules({
-    ...HINT,
-    sites: [
-      { domain: SITE, mode: "picker" },
-      { domain: "other.example", mode: "off" },
-      { domain: "third.example.com", mode: "hint" },
-    ],
-  });
+  const sites = [
+    { domain: SITE, mode: "picker" },
+    { domain: "other.example", mode: "off" },
+    { domain: "third.example.com", mode: "hint" },
+  ];
+  const rules = [
+    ...buildRules({ ...HINT, sites }),
+    ...buildRules({ enabled: true, mode: "listed", upn: HINT.upn, sites }),
+  ];
   assert.ok(rules.length >= 6);
 
   for (const rule of rules) {

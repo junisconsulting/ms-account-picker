@@ -46,7 +46,7 @@ body {
   font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 9px; /* measured against Chrome's 600px popup cap — the e2e check guards it */
 }
 
 /* --- header --------------------------------------------------------------- */
@@ -81,7 +81,7 @@ body {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 11px;
+  padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;

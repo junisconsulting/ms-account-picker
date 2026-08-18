@@ -44,6 +44,8 @@ WHAT IT DOES
 • Direct sign-in — goes straight to the account you entered.
 • Per site — a site you use with more than one account can keep the picker
   while everything else goes direct, or the other way round.
+• Only the sites you list — for a deliberately narrow setup: nothing changes
+  anywhere except on the sites you name yourself.
 • Off per profile — it does nothing at all until you switch it on in this
   browser profile. Install it everywhere, arm it where you want it.
 
@@ -107,7 +109,7 @@ The extension's entire function is one declarative rule that appends a single qu
 **`storage`**
 
 ```
-Stores the user's own settings: whether the extension is active in this browser profile, which mode to use, the account name for direct sign-in, and the per-site exceptions. chrome.storage.local only. Nothing is synchronised and nothing is transmitted.
+Stores the user's own settings: whether the extension is active in this browser profile, which of the three modes to use, the account name for direct sign-in, and the per-site list. chrome.storage.local only. Nothing is synchronised and nothing is transmitted.
 ```
 
 **Host permission `https://login.microsoftonline.com/*`**

@@ -31,8 +31,39 @@ now names the popup document instead of a second, identical one.
 - The 25 committed logo renders under `assets/logo/preview/` and the four rejected
   logo drafts. The chosen mark stays, as `assets/logo/mark.svg` and `mark-dark.svg`.
 
+### Added
+
+- A third global mode: **only the sites I list**. It registers no global rule at
+  all — every Microsoft sign-in is left exactly as the portal built it, except on
+  the sites named in the list, which keep their own setting. For a deliberately
+  narrow deployment; the account picker stays the default.
+
+  **This mode inverts the failure direction and that is worth knowing before you
+  choose it:** in every other mode a site the extension fails to recognise falls
+  back to the account picker. Here it falls back to nothing, and the sign-in
+  proceeds silently on the account the browser already holds. The extension warns
+  when the list is empty and the status line names how many sites it reaches, but
+  the trade is deliberate — see `docs/architecture.md` §3.1.1.
+
+  No list of Microsoft portals ships with the extension, and none is planned: a
+  built-in list goes stale as Microsoft renames its portals, and staleness here
+  looks exactly like coverage. The list is yours to fill.
+
+### Changed
+
+- The account name is reachable whenever direct sign-in is in play — as the global
+  mode **or** on a single site. It used to appear only while direct sign-in was the
+  global choice, so setting one site to direct sign-in meant switching the global
+  mode over, typing the account, and switching back. There is one stored account
+  name and every direct sign-in uses it; the field now says so and sits below the
+  three modes rather than under one of them.
+
 ### Fixed
 
+- The status line no longer reports "saved" over a per-site direct sign-in that
+  was silently dropped for want of a valid account name. It said the site was
+  configured while no rule for it existed — pre-existing, and total rather than
+  partial in the new mode, which is what brought it to light.
 - `assets/logo/render.sh` reproduces `src/icons/icon-48-dark.png`. It used to render
   five sizes of a single variant, which left the dark header icon with no path back
   to its source. All six shipped PNGs verified byte-identical after the change.

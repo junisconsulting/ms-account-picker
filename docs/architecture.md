@@ -32,7 +32,9 @@ A **Manifest-V3 browser extension** that, in the admin profile, adds a query par
 
 **Core principle: augment, never construct.** The portal (MSAL.js) builds the request including `state`, `nonce`, `code_challenge` (PKCE) and `response_mode`. The extension adds exactly one parameter. That is why the approach works for every Microsoft portal without maintaining client IDs or redirect URIs.
 
-### 3.1 Two modes
+### 3.1 Two parameters, three modes
+
+There are exactly two parameters the extension will ever inject:
 
 | Mode | Injected parameter | Behaviour |
 | --- | --- | --- |
@@ -50,6 +52,23 @@ Reasoning:
 - The picker writes no identity into the URL — the data-protection point from `security-review.md` §5 does not arise in this mode at all.
 
 That closes what used to be an open verification (V1). It was carried as "undocumented, checkable by hand in five minutes"; the documentation existed, we had not read it. The combination is not available, so the decision above is not a compromise between two options — it is the only shape the protocol offers.
+
+#### 3.1.1 The third mode is a scope, not a parameter (decided 2026-08-18)
+
+**Only the sites I list** injects nothing globally: no base rule is registered, and only the configured sites get one — each with the parameter its own mode names. A8 is untouched, because the choice is *where* the extension acts, not *what* it injects.
+
+It exists because reach is a customer decision. The base rule matches every ESTS authorize request, which is exactly what lets the extension work on portals nobody has tested; a customer who wants a deliberately narrow deployment had no way to say so.
+
+**It inverts the failure direction, which is why it is opt-in and never the default:**
+
+| A site fails to match | Result |
+| --- | --- |
+| Picker / Hint | Falls back to the global default → the user gets a picker → safe |
+| Only the sites I list | No rule fires → the user is signed in silently with the PRT account |
+
+The per-site condition finds the portal host inside the percent-encoded `redirect_uri` — a heuristic, with the `%2E` caveat and exact-host-only matching recorded in `SECURITY.md`. As an exception mechanism a miss costs nothing. As the **primary gate** every miss is an invisible failure. Two consequences are therefore part of the mode, not decoration: an empty list is a warning in the UI rather than a saved state, and the status line names the number of sites the configuration actually reaches.
+
+**No list of portals ships with the extension.** A prefilled set of Microsoft hostnames was considered and rejected on 2026-08-18. Microsoft is renaming its portal estate (`compliance.` → `purview.`, `endpoint.` → `intune.`, the consolidation onto `*.cloud.microsoft`), so a shipped list is stale on arrival — and staleness surfaces as silent non-coverage on the new hostname. It would also reach the customer through the auto-updating delivery route they cannot decline (F9), changing the rule surface under them. The list stays empty and customer-owned; the UI offers free text, not a menu.
 
 ## 4. Components
 
@@ -83,7 +102,7 @@ One global default plus exceptions per portal. Three priority bands:
 
 | Band | Priority | Rule | When |
 | --- | --- | --- | --- |
-| Base | 1 | broad authorize regex → the global default parameter | activated |
+| Base | 1 | broad authorize regex → the global default parameter | activated, unless the global mode is *only the sites I list* |
 | Site guard | 2 | site regex → `action: "allow"` | for **every** configured site |
 | Site injection | 3 | the **identical** site regex → that site's parameter | site mode ≠ `off` |
 
@@ -94,6 +113,10 @@ Instead, the portal's domain is already present in the authorize URL: percent-en
 **Why the guard rule matches on the site condition and not on the injected parameter.** The priority-2 condition does not mention the parameter, and therefore matches identically before and after the injection. That makes the model correct regardless of how Chromium treats a rule that has no effect.
 
 Measured (2026-08-17): **Chromium does not fall through.** With the guard rule removed, E1 stays green — after a rule whose redirect would produce an identical URL, matching stops and the base rule never gets its turn. The guard is thus redundant for `picker`/`hint` sites and load-bearing for `off` sites. It stays for both: a T0 path must not rest on undocumented behaviour that a browser update can change silently.
+
+With no base rule — the *only the sites I list* mode — no guard is emitted either. A guard exists solely to hold the base rule off a site, so without one it would be dead weight in the rule set.
+
+**One account name, not one per site.** Every rule that injects `login_hint` — the global one and every per-site one — reads the same stored value. A per-site account was considered and not built: it would multiply the trust boundary of `isValidUpn` across an unbounded list for a need nobody has stated. The consequence for the UI is that the field belongs to the profile rather than to the global mode, and is offered whenever direct sign-in appears anywhere in the configuration.
 
 **Rejected:** using `removeParams` to make the base rule and the site rule mutually exclusive. That oscillates — the base sets the parameter, the site rule removes it, and the flow ends in `ERR_TOO_MANY_REDIRECTS`. It is recorded as a named trap in `dnr-rule-check`.
 

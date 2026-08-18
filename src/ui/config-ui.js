@@ -28,18 +28,19 @@ import { VENDOR } from "./vendor.js";
 
 const STORAGE_KEYS = ["enabled", "mode", "upn", "sites"];
 
-/** The two global modes, as the status line names them. Per-site "off" is not one of them. */
+/** The two modes the status line names by label. "listed" reads as its own sentence. */
 const MODE_LABEL = {
   picker: "Account picker",
   hint: "Direct sign-in",
 };
 
+// The header carries no subtitle on purpose: "When you sign in to Microsoft" says
+// the same thing 40px below it, and the popup has 600px in total to spend.
 const TEMPLATE = `
 <header class="hdr">
   <img class="logo" src="../icons/icon-48.png" alt="">
   <div class="hdr-text">
     <h1>MS Account Picker</h1>
-    <p class="sub">Choose which account you sign in with.</p>
   </div>
   <span class="ver" id="version"></span>
 </header>
@@ -49,7 +50,7 @@ const TEMPLATE = `
     <input type="checkbox" id="enabled">
     <span class="grow">
       <strong>Active in this profile</strong>
-      <small>Leave this off in your everyday profile. While it is off, nothing is changed.</small>
+      <small>Leave this off in your everyday profile.</small>
     </span>
   </label>
 </section>
@@ -71,8 +72,16 @@ const TEMPLATE = `
     </span>
   </label>
 
+  <label class="row">
+    <input type="radio" name="mode" value="listed">
+    <span class="grow">
+      <strong>Only the sites I list</strong>
+      <small>Every other Microsoft sign-in is left alone.</small>
+    </span>
+  </label>
+
   <div class="acct" id="account">
-    <label class="fld" for="upn">Account to sign in with</label>
+    <label class="fld" for="upn">Account for direct sign-in</label>
     <input type="email" id="upn" autocomplete="off" spellcheck="false"
            placeholder="you@contoso.onmicrosoft.com">
     <small class="hint">In the sign-in URL, so also in history and proxy logs.</small>
@@ -80,9 +89,9 @@ const TEMPLATE = `
 </section>
 
 <details class="card cfg">
-  <summary>Exceptions for specific sites<span id="site-count"></span></summary>
-  <small class="hint">A site you use with more than one account usually wants the picker even
-    when direct sign-in is the default. Enter the exact host, like
+  <summary><span id="site-title"></span><span id="site-count"></span></summary>
+  <small class="hint">A site you use with more than one account usually wants the picker,
+    even where direct sign-in is set. Enter the exact host, like
     <code>make.powerautomate.com</code> — a parent domain does not cover its subdomains.</small>
   <ul class="sites" id="site-list"></ul>
   <div class="addrow">
@@ -155,6 +164,7 @@ export function renderConfigUi(host) {
   const statusEl = $("status");
   const rowTemplate = $("site-row");
   const account = $("account");
+  const siteTitle = $("site-title");
   const siteCount = $("site-count");
   const configCards = host.querySelectorAll(".cfg");
 
@@ -165,6 +175,9 @@ export function renderConfigUi(host) {
 
   /** The configuration as last read or edited. Persisted in one write, always whole. */
   let config = { enabled: false, mode: "picker", upn: "", sites: [] };
+
+  /** Is any single site set to direct sign-in? Decides both the warning and the field. */
+  const siteUsesHint = () => config.sites.some((site) => site.mode === "hint");
 
   function report(message, kind = "") {
     statusEl.textContent = message;
@@ -205,14 +218,29 @@ export function renderConfigUi(host) {
   /** Says what the current configuration will actually do, including when that is "nothing". */
   function reportEffect() {
     if (!config.enabled) return report("Inactive in this profile.");
+
+    const count = config.sites.length;
+
     if (config.mode === "hint" && !isValidUpn(config.upn)) {
       return report("Needs a valid account — no rule is active.", "warn");
     }
-    const exceptions = config.sites.length;
+    // A site set to direct sign-in is dropped exactly as silently when the UPN
+    // is unusable. Under "only the sites I list" that can be the entire
+    // configuration, which would otherwise report "saved" over nothing at all.
+    if (siteUsesHint() && !isValidUpn(config.upn)) {
+      return report("Sites set to direct sign-in need a valid account.", "warn");
+    }
+
+    // "Only the sites I list" is the one mode that can be fully armed and still
+    // do nothing anywhere, so an empty list is a warning, not a saved state.
+    if (config.mode === "listed") {
+      if (count === 0) return report("No sites listed — nothing is changed.", "warn");
+      return report(`Saved. Only the ${count} listed site${count === 1 ? " is" : "s are"} changed.`);
+    }
     report(
-      exceptions === 0
+      count === 0
         ? `Saved. Default: ${MODE_LABEL[config.mode].toLowerCase()}.`
-        : `Saved. Default: ${MODE_LABEL[config.mode].toLowerCase()}, ${exceptions} exception${exceptions === 1 ? "" : "s"}.`,
+        : `Saved. Default: ${MODE_LABEL[config.mode].toLowerCase()}, ${count} exception${count === 1 ? "" : "s"}.`,
     );
   }
 
@@ -245,10 +273,16 @@ export function renderConfigUi(host) {
     host.querySelector(`input[name="mode"][value="${config.mode}"]`).checked = true;
     upn.value = config.upn;
     upn.classList.toggle("invalid", config.mode === "hint" && !isValidUpn(config.upn));
-    // The account field only exists for direct sign-in. Picker mode is the default,
-    // so leaving it visible would greet every new user with a field they are not
-    // meant to fill in, plus its proxy-log warning.
-    account.hidden = config.mode !== "hint";
+    // The account field exists wherever direct sign-in does — as the global mode
+    // or on a single site. It stays hidden otherwise: the picker is the default,
+    // so showing it unconditionally would greet every new user with a field they
+    // are not meant to fill in, plus its proxy-log warning.
+    account.hidden = config.mode !== "hint" && !siteUsesHint();
+    // In "listed" mode this section is not a set of exceptions — it is the whole
+    // configuration. A heading that still said "Exceptions" would send someone
+    // looking for their own list under the wrong word.
+    siteTitle.textContent =
+      config.mode === "listed" ? "The sites I list" : "Exceptions for specific sites";
     for (const card of configCards) card.classList.toggle("dim", !config.enabled);
     paintSites();
   }
@@ -257,7 +291,9 @@ export function renderConfigUi(host) {
     const stored = await chrome.storage.local.get(STORAGE_KEYS);
     config = {
       enabled: stored.enabled === true,
-      mode: stored.mode === "hint" ? "hint" : "picker",
+      // Picker for anything unrecognised — an old or corrupted value must land
+      // on the mandatory baseline, never on the mode that changes nothing.
+      mode: stored.mode === "hint" || stored.mode === "listed" ? stored.mode : "picker",
       upn: typeof stored.upn === "string" ? stored.upn : "",
       sites: Array.isArray(stored.sites)
         ? stored.sites.filter((s) => isValidDomain(String(s?.domain ?? "").trim().toLowerCase()))

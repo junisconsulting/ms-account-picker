@@ -20,6 +20,11 @@
 //   p2  guard   per-site regex               -> action "allow"
 //   p3  inject  the SAME per-site regex      -> that site's parameter
 //
+// In the "listed" global mode there is no p1, and then p2 is pointless as well:
+// a guard exists only to hold the base rule off a site. That configuration
+// therefore emits p3 rules alone — the extension touches the listed sites and
+// nothing else.
+//
 // The guard is what keeps the base rule from also firing on a site that has its
 // own mode. It is keyed on the SITE CONDITION, never on the injected parameter —
 // that is the whole point. After the p3 rule fires, the URL changes but the p2
@@ -129,11 +134,23 @@ export function siteRegexFilter(domain) {
 }
 
 /**
- * The one parameter a given mode injects, or null when the mode cannot be
- * satisfied. Hint mode without a usable UPN yields null rather than sending
- * `login_hint=` with no value on every authorize request.
+ * The one parameter a given mode injects, or null when it injects none.
+ *
+ * Two different reasons for null, and the difference matters to a reviewer:
+ *
+ *   "listed"  the global mode that deliberately has NO default. Only the
+ *             configured sites get a rule; every other authorize request is
+ *             left exactly as the portal built it. Chosen, not a failure.
+ *
+ *   "hint" with an unusable UPN — a failure. Sending `login_hint=` with no
+ *             value on every authorize request would be worse than doing
+ *             nothing, so nothing is what happens.
+ *
+ * Site modes never reach the "listed" branch: buildRules narrows an entry's
+ * mode to picker/hint/off before calling this.
  */
 function paramFor(mode, upn) {
+  if (mode === "listed") return null;
   if (mode !== "hint") return { key: "prompt", value: "select_account" };
   const value = String(upn ?? "").trim();
   return isValidUpn(value) ? { key: "login_hint", value } : null;
@@ -160,7 +177,7 @@ const condition = (regexFilter) => ({ regexFilter, resourceTypes: ["main_frame"]
  * produced before per-site rules existed, with the same id and priority. That
  * is the migration guarantee: there is no migration code that could get it wrong.
  *
- * @param {{ enabled?: boolean, mode?: "picker"|"hint", upn?: string,
+ * @param {{ enabled?: boolean, mode?: "picker"|"hint"|"listed", upn?: string,
  *           sites?: Array<{domain: string, mode: "picker"|"hint"|"off"}> }} config
  * @returns {Array<object>} Zero or more DNR rules.
  */
@@ -171,8 +188,8 @@ export function buildRules(config) {
 
   const rules = [];
 
-  // Picker is the default and the mandatory baseline; anything but an explicit
-  // "hint" falls back to it (A8).
+  // Picker is the mandatory baseline (A8): anything that is neither an explicit
+  // "hint" nor the explicit "listed" mode falls back to it.
   const baseParam = paramFor(config.mode, config.upn);
   if (baseParam) {
     rules.push({
