@@ -1,80 +1,126 @@
 # Deployment
 
-> Status: the procedure is described but has not been carried out. Concrete values (extension ID, `update_url`, hashes) are placeholders.
+> Status: procedure settled, not yet carried out. Concrete values (extension ID, hashes, Edge version) are placeholders until the first upload.
 
-## 1. Delivery route — under revision 🔴
+## 1. Delivery route: Chrome Web Store, publicly listed
 
-**The decision recorded below has been reversed and the replacement is not yet written up.** The project now intends to publish through the Chrome Web Store, because the client needs a stable extension ID in order to allowlist and test the extension. Until this section is rewritten, treat the paragraph after it as history, not as the current plan.
+This reverses the project's original decision. The reasoning, and what the reversal costs, is recorded as a risk acceptance in `security-review.md` §7 — it is a decision, not a detail.
 
-Still to be recorded when it is: public code in a T0 authentication path is both a transparency gain and reconnaissance help for an attacker; the moment of delivery moves to Google; security rule 4 (pinned version, no auto-update) remains valid and is enforced on the customer side through `ExtensionSettings`; and Google's review process replaces none of the reviews described in `security-review.md`.
+**Why the store.** The customer needs a stable extension ID to allowlist the extension by policy and to test it. An ID exists for a self-hosted CRX too, but self-hosting makes every install depend on internal distribution infrastructure that does not exist yet, and it puts the burden of a signing key and an update endpoint on the customer before the first test can happen.
 
-**Superseded decision.** No upload to a store; a self-hosted CRX on internal infrastructure. Reasoning at the time: the store route gives up control over the moment of delivery and over the version, which was judged unacceptable for a T0 influence path; and the code would be publicly readable, including the endpoint rules.
+**Superseded decision.** No store, self-hosted CRX on internal infrastructure. The reasoning at the time was that a store gives up control over the moment of delivery and over the version, which was judged unacceptable for a T0 influence path, and that the code would become publicly readable. The first point has turned out to be **more true than assumed** — see §1.2. The second is now moot: the repository is public by choice.
+
+### 1.1 Sequencing — the ID exists before publication
+
+1. Create the item in the Chrome Web Store developer dashboard
+2. Upload a ZIP of `src/`
+3. **The extension ID is visible immediately**, before the listing is complete and before anything is published
+4. Hand the ID to the customer for the `ExtensionSettings` entry
+5. Complete the listing (`store-listing.md`), submit for review, publish
+
+Steps 1–4 are enough for the customer to allowlist and test. Publication is not a prerequisite for the ID, and an item can stay unlisted while testing runs.
+
+### 1.2 🔴 Version pinning is not available — open decision
+
+`CLAUDE.md` security rule 4 says: *pinned version in the deployment policy, never auto-update.* **That rule cannot be satisfied for a store-hosted extension.**
+
+Verified against both vendors' policy schemas (2026-08-18): `ExtensionSettings` has no `pinned_version` field. Earlier revisions of this document used that key; it does not exist and never did. What exists is:
+
+| Field | What it actually does |
+| --- | --- |
+| `minimum_version_required` | Disables the extension if its version is **older** than the value. A floor, not a ceiling — it blocks downgrades, it cannot prevent an update |
+| `override_update_url` + `update_url` | Fetches the extension and its updates from a URL you control. This is the only mechanism that yields real version control, and it requires self-hosting the update manifest |
+
+So a store-hosted extension auto-updates, and no policy prevents it. Three ways forward, none of them free:
+
+1. **Accept auto-update.** Set `minimum_version_required` as a floor against downgrade attacks and accept that Google controls when a new version reaches the fleet. Security rule 4 is then rewritten to say what is actually enforceable.
+2. **Store for the ID and the review, self-hosting for the delivery.** Keeps real pinning through `override_update_url`. Costs an update endpoint and key custody, and the self-hosted build carries a **different extension ID** than the store item unless the signing key is controlled from the first upload.
+3. **Publish only unlisted, deliver by policy.** Reduces exposure but does not change the update mechanism — it is cosmetic against this problem.
+
+**Not decided.** Rule 4 is a security rule; it does not get rewritten to fit a constraint without an explicit decision.
+
+### 1.3 Edge installing a Chrome Web Store item
+
+The target browser is Edge, the store is Google's. Two documented conditions apply:
+
+- **Domain or Entra join is required.** Microsoft: apps and extensions from outside the Edge Add-ons website can only be force-installed on Windows if the instance is joined to Active Directory or to Microsoft Entra ID. The target fleet is hybrid-joined, so this holds — but it is a dependency worth naming, because it means the extension cannot be force-installed on an unmanaged device.
+- **The Chrome Web Store may be blocked.** Many environments block third-party stores with `{"update_url:https://clients2.google.com/service/update2/crx": {"installation_mode": "blocked"}}`. A per-ID `force_installed` entry still wins over that block, but the customer has to know it is there.
+
+If neither holds, the fallback is a second listing in the Edge Add-ons store — which produces a **different extension ID** and therefore a second policy entry and a second review.
 
 ## 2. Distribution
 
 Through the Edge policy `ExtensionSettings`, browser-wide:
 
-- `installation_mode: force_installed`
-- `update_url` pointing at the delivery endpoint
-- a **pinned version** — no auto-update without approval
-
-The force-install happens **browser-wide**; the functional separation comes from the fact that the workforce profile is never activated (constraint A3 — no activation flag, no rule). That is the central deployment trick: a single policy object, no profile targeting.
-
-`ExtensionSettings` is the **only** policy in the project. The extension's own configuration (activation, mode, UPN) is deliberately not distributed by policy but set manually per profile in the configuration UI (`open-questions.md` F3). Each admin therefore has a one-time setup step — that belongs in onboarding, not in deployment.
-
-### 2.1 Policy skeleton
-
 ```json
 {
   "<extension-id>": {
     "installation_mode": "force_installed",
-    "update_url": "https://<delivery-endpoint>/updates.xml",
-    "override_update_url": true,
-    "pinned_version": "<x.y.z>"
+    "update_url": "https://clients2.google.com/service/update2/crx",
+    "minimum_version_required": "<x.y.z>"
   }
 }
 ```
 
-<!-- TODO: record the extension ID once the store item exists, align update_url with the
-     chosen delivery route (see §1), add the policy path (GPO/Intune). -->
+`update_url` is the Chrome Web Store endpoint. `override_update_url` is deliberately absent — it belongs to option 2 of §1.2 and would point at a self-hosted manifest.
+
+The force-install happens **browser-wide**; the functional separation comes from the workforce profile never being activated (constraint A3 — no activation flag, no rule). That is the central deployment trick: a single policy object, no profile targeting.
+
+`ExtensionSettings` is the **only** policy in the project. The extension's own configuration (activation, mode, account, per-site exceptions) is deliberately not distributed by policy but set per profile in the extension UI (`open-questions.md` F3). Each admin therefore has a one-time setup step — that belongs in onboarding, not in deployment.
+
+<!-- TODO: record the extension ID after the first upload; add the policy delivery path
+     (GPO or Intune) once the customer has chosen it. -->
 
 ## 3. Build and signing
 
-The requirement from `security-review.md`: a reproducible build, a signing chain at IDemFlow level, artefact hash documented.
+The requirement from `security-review.md`: a reproducible build, artefact hash documented.
 
-The extension has no build step in the sense of transpilation or bundling — `src/` is what runs. "Build" here means packing and signing, nothing else.
+The extension has no build step in the sense of transpilation or bundling — `src/` is what runs. "Build" here means packaging, and for the store route it means producing a deterministic ZIP:
 
 ```
-src/  →  CRX3 (signed)  →  build/ms-account-picker-<version>.crx
+src/  →  ms-account-picker-<version>.zip  →  Chrome Web Store  →  Google signs the CRX
 ```
 
-<!-- TODO: settle the packaging command, clarify key custody (HSM / key vault — the key does
-     not belong on a developer machine), demonstrate reproducibility: pack twice, same hash. -->
+**Signing moves to Google.** That is part of the reversal: the CRX is signed with a key Google holds, so there is no private key in this project's custody and no key to protect — and equally no signature the customer can verify against a junis key. Named in `security-review.md` §7.
+
+What stays verifiable is the **uploaded artefact**. The ZIP must be reproducible so that the hash in §3.1 identifies exactly one set of bytes:
+
+```bash
+# Deterministic: fixed timestamps, sorted entries, no extra attributes.
+cd src && find . -type f | LC_ALL=C sort | \
+  zip -X -q ../build/ms-account-picker-<version>.zip -@ && \
+  cd .. && sha256sum build/ms-account-picker-<version>.zip
+```
+
+<!-- TODO: run this twice on different machines and confirm the hash matches before the
+     first upload. Reproducibility that has not been demonstrated is a claim, not a property. -->
 
 ### 3.1 Artefact register
 
-| Version | Date | SHA-256 | Approved by |
-| --- | --- | --- | --- |
-| — | — | — | — |
+| Version | Date | SHA-256 of the uploaded ZIP | Store item state | Approved by |
+| --- | --- | --- | --- | --- |
+| — | — | — | — | — |
 
-Every delivered version is recorded here. A version without an entry is not approved.
+Every uploaded version is recorded here. A version without an entry is not approved.
 
 ## 4. Rollout
 
-<!-- TODO: settle the rings and the abort criteria with the client. -->
+<!-- TODO: settle the rings and the abort criteria with the customer. -->
 
 Proposal, to be agreed:
 
 1. **Ring 0** — the project participants, loaded unpacked. Verification matrix complete.
-2. **Ring 1** — a small pilot group of admin accounts, by policy. Wait at least one sign-in-frequency period of the admin session baseline.
-3. **Ring 2** — all admin accounts.
+2. **Ring 1** — a small pilot group, by policy against the unlisted store item. Wait at least one sign-in-frequency period of the admin session baseline.
+3. **Ring 2** — everyone in scope.
 
 Before every ring change: verification matrix green, security review recorded, artefact hash registered.
 
 ## 5. Rollback
 
-The user-level escape hatch (F2 of the open questions) does not replace a fleet-level rollback path.
+The user-level escape hatch (F2) does not replace a fleet-level rollback path.
 
-Rollback = set `pinned_version` back to the previous version, or set `installation_mode` to `blocked`. Both take effect only at the next policy refresh — the time until then is the actual recovery time and has to be known.
+Rollback is `installation_mode: blocked` or `removed`. Note what §1.2 implies: **rolling back to a previous version is not available on the store route** — `minimum_version_required` can only forbid older versions, and the store serves only the current one. The rollback path is therefore "off", not "back".
+
+Both take effect at the next policy refresh. The time until then is the actual recovery time and has to be known.
 
 <!-- TODO: measure the policy refresh interval in the target environment and record it here. -->

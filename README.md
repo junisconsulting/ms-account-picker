@@ -14,6 +14,7 @@ Manifest-V3 browser extension for Microsoft Edge. It appends a single query para
 | [docs/architecture.md](docs/architecture.md) | The approach, rejected alternatives, empirical status |
 | [docs/security-review.md](docs/security-review.md) | T0 classification, requirements, stop criterion, data protection |
 | [docs/deployment.md](docs/deployment.md) | `ExtensionSettings` policy, signing, rollout, rollback |
+| [docs/store-listing.md](docs/store-listing.md) | The store listing texts, permission justifications, privacy answers |
 | [docs/verification-matrix.md](docs/verification-matrix.md) | Manual test matrix — portals × session states |
 | [docs/open-questions.md](docs/open-questions.md) | Open decisions; shrinks as the project proceeds |
 | [SECURITY.md](SECURITY.md) | How to report a vulnerability, and what is already known and accepted |

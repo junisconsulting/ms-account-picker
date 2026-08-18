@@ -83,6 +83,7 @@ ms-account-picker/
 │   ├── security-review.md        # T0 classification, permissions, risk acceptance
 │   ├── deployment.md             # ExtensionSettings policy, signing, rollout
 │   ├── verification-matrix.md    # Manual test matrix (portals × states)
+│   ├── store-listing.md          # Listing texts, permission justifications, privacy answers
 │   └── open-questions.md         # Open decisions — shrinks over the project
 ├── src/                          # The extension, loaded as written (no build step)
 │   ├── manifest.json
