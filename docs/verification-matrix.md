@@ -10,7 +10,7 @@ These four assumptions carry the design. They are manual and one-off; while they
 
 | # | Assumption | Check | Consequence if negative |
 | --- | --- | --- | --- |
-| V1 | `prompt=select_account` **plus** `login_hint` preselects the admin account in the picker | Take a portal's authorize URL, add both parameters by hand, call it | None — the picker simply stays without preselection (`open-questions.md` F1). If positive: both requirements are met and the mode design gets simpler |
+| ~~V1~~ ✅ | `prompt=select_account` **plus** `login_hint` preselects the account in the picker | **Answered 2026-08-18 by the documentation, not by a test.** Microsoft: *"You can't use both `login_hint` and `select_account`."* ([OIDC protocol reference](https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc)). The combination is unsupported, so there is nothing to measure | — |
 | ~~V2~~ ✅ | The device claim (`deviceDetail.deviceId`) survives `prompt`/`login_hint` | **Confirmed 2026-08-17, manually in the sign-in log, in both modes.** The extension does not break the device binding — the stop criterion of the whole concept is cleared | — |
 | V3 | `login_hint` overrides a PRT belonging to a **different** user | Manually, as with the `select_account` test | The `login_hint` mode is dropped with no replacement; the picker remains the only mode |
 | ~~V4~~ ✅ | `host_permissions` on `login.microsoftonline.com` is enough for the redirect | **Confirmed 2026-08-17 by `tests/e2e/dnr.e2e.js`** — the rule applies even for a navigation from a foreign origin for which there is no host permission. The stop criterion from `security-review.md` §4 is averted for now | — |

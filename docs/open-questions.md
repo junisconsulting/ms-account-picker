@@ -45,7 +45,7 @@ The wish for "`login_hint` filled with the admin user **and** an account picker"
 
 Decision: **the picker (`prompt=select_account`) is the default and the mandatory baseline**, `login_hint` stays available as a per-profile opt-in. The reasoning is in `architecture.md` §3.1 — in short: the picker is the empirically confirmed mode, it keeps foreign tenants reachable (which makes F2 moot), and it writes no identity into the URL.
 
-**Remaining point:** whether `prompt=select_account` **together with** `login_hint` preselects the account in the picker is undocumented and checkable in five minutes → `verification-matrix.md` V1. Positive = both wishes satisfied, negative = the decision stands.
+**Remaining point, closed 2026-08-18:** it is not undocumented after all. Microsoft states *"You can't use both `login_hint` and `select_account`"* ([OIDC protocol reference](https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc)). The wish was not merely unverified, it is unsupported by the protocol — so the decision is not a trade-off between two viable modes, it is the only shape available.
 
 On the question "can the UPN be retrieved dynamically?": not usefully. `chrome.identity.getProfileUserInfo()` returns the account the **Edge profile** is signed in with — not the account of the portal session. It costs the additional `identity`/`identity.email` permission in a T0 extension and assumes the admin profile is signed in to Edge at all. With F3 (manual entry) the question is settled.
 

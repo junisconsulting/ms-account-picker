@@ -42,7 +42,7 @@ These are not preferences. A change that violates one is wrong, not debatable.
 | A5 | ⚠️ Tenant segment in the regex is **variable** (`[^/]+`) | The real request uses `/organizations/`, not `/common/` — verified on the Azure portal request |
 | A6 | ⚠️ Cover v1 **and** v2 endpoints: `/oauth2/authorize` and `/oauth2/v2.0/authorize` | Portals still use both |
 | A7 | Endpoint aliases `login.windows.net` / `login.microsoft.com` are **out of scope** (decided 2026-08-17) | No portal in the target environment is known to use them, and each alias is another `host_permissions` entry. Adding one is a host-permission review, not a bugfix |
-| A8 | `prompt=select_account` and `login_hint` are **mutually exclusive**, and **picker mode is the default** | A set `prompt=select_account` makes `login_hint` ineffective. The picker is the mandatory baseline; `login_hint` is opt-in per profile (`docs/architecture.md` §3.1) |
+| A8 | `prompt=select_account` and `login_hint` are **mutually exclusive** — Microsoft: *"You can't use both"* — and **picker mode is the default** | A set `prompt=select_account` makes `login_hint` ineffective. The picker is the mandatory baseline; `login_hint` is opt-in per profile (`docs/architecture.md` §3.1) |
 | A9 | WS-Federation (`/wsfed?`) knows no `prompt` — **known gap, documented, not worked around** | See `docs/architecture.md` |
 | A10 | The service worker does **nothing but rule sync** | No listeners, no state, no background work beyond `chrome.storage` → DNR |
 

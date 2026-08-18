@@ -39,7 +39,7 @@ A **Manifest-V3 browser extension** that, in the admin profile, adds a query par
 | **Picker** | `prompt=select_account` | The account chooser always appears; the workforce account stays visible |
 | **Hint** | `login_hint=<UPN>` | Straight to the configured account; the workforce account never appears |
 
-**The two are mutually exclusive** — a `prompt=select_account` that is set makes `login_hint` ineffective. "Picker, but with the admin account preselected" is therefore not an available third mode.
+**The two are mutually exclusive.** Microsoft documents it in one sentence: *"You can't use both `login_hint` and `select_account`."* ([OIDC protocol reference](https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc), `prompt` parameter). "Picker, but with the account preselected" is therefore not an unexplored third mode — it is documented as unsupported.
 
 **Decision (2026-08-17):** the picker is the default and the mandatory baseline. `login_hint` remains available as a per-profile opt-in, for admins who want to save the click and do not need a foreign tenant.
 
@@ -49,7 +49,7 @@ Reasoning:
 - The picker keeps every foreign tenant reachable, which makes a separate escape hatch unnecessary.
 - The picker writes no identity into the URL — the data-protection point from `security-review.md` §5 does not arise in this mode at all.
 
-It remains open whether `prompt=select_account` together with `login_hint` **preselects** the account in the picker. That is undocumented but checkable by hand in five minutes → `verification-matrix.md` V1. If the test comes out positive, that combination satisfies both wishes; if it comes out negative, the decision above stands.
+That closes what used to be an open verification (V1). It was carried as "undocumented, checkable by hand in five minutes"; the documentation existed, we had not read it. The combination is not available, so the decision above is not a compromise between two options — it is the only shape the protocol offers.
 
 ## 4. Components
 
@@ -120,7 +120,9 @@ Reaching into that state would mean matching the navigation to the portal domain
 
 **What the extension does offer for it** (F8, 2026-08-18): a sign-out link in the configuration UI, pointing at the ESTS logout endpoint. It enforces nothing — it hands the next sign-in back to the rule, in one click instead of through the portal's account menu. It needs no new permission, because `login.microsoftonline.com` is already covered and a plain link needs no API.
 
-Measured on 2026-08-18: it works. One portal is slower to let go — `make.powerautomate.com` holds its own application session past the ESTS logout and releases it only after a browser restart (`verification-matrix.md` Z8). That is a property of the portal, not of the rule, and it is named in the UI rather than worked around.
+Measured on 2026-08-18: it works. Microsoft documents why it works — after a sign-out, *"if a valid Primary Refresh Token (PRT) exists for the signed-out user and a new sign-in is executed, single sign-out will be interrupted and user will see a prompt with an account picker"* ([OIDC protocol reference](https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc), sign-out request). The PRT that causes this project's problem is the same PRT that makes the sign-out land on a picker.
+
+One portal is slower to let go — `make.powerautomate.com` holds its own application session past the ESTS logout and releases it only after a browser restart (`verification-matrix.md` Z8). The same page explains that too: single sign-out reaches an application only through **front-channel logout**, which requires the application to have registered a front-channel logout URL *and* to clear its own session on request. Where an application does not, the ESTS session ends and the application's does not. That is a property of the portal, not of the rule — named in the UI rather than worked around.
 
 Reported from real use on 2026-08-18, at `make.powerautomate.com` with a live session.
 
