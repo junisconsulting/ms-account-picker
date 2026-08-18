@@ -71,10 +71,11 @@ Unit-testable (and therefore mandatory as a unit test): UPN → DNR rule object 
 ms-account-picker/
 ├── CLAUDE.md                     # This file — canonical project-wide rules
 ├── README.md                     # Purpose, status, quick start
+├── CHANGELOG.md                  # What each version changed — the audit surface for auto-update
 ├── .claude/
 │   ├── settings.json             # Permissions + Stop hook
 │   ├── hooks/verify.sh           # The deterministic gate (exit 0 green / 2 red)
-│   └── skills/                   # verify, security-review, dnr-rule-check
+│   └── skills/                   # verify, security-review, dnr-rule-check, release
 ├── LICENSE                       # Apache-2.0, verbatim
 ├── NOTICE                        # Copyright line + the trademark reservation
 ├── SECURITY.md                   # Vulnerability reporting; known-and-accepted properties
@@ -93,6 +94,7 @@ ms-account-picker/
 │   ├── options/                       # Shell — same UI, opened from the extensions list
 │   ├── icons/                         # Rendered PNGs (Chrome takes no SVG)
 │   └── lib/rules.js                   # Rule building — pure, unit-testable
+├── tools/package.py              # Reproducible ZIP for the store — stdlib only
 ├── tests/
 │   ├── unit/                     # node:test, no framework
 │   └── e2e/                      # Loaded-extension checks (Phase 2)

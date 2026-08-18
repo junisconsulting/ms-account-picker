@@ -81,23 +81,21 @@ src/  →  ms-account-picker-<version>.zip  →  Chrome Web Store  →  Google s
 
 **Signing moves to Google.** That is part of the reversal: the CRX is signed with a key Google holds, so there is no private key in this project's custody and no key to protect — and equally no signature the customer can verify against a junis key. Named in `security-review.md` §7.
 
-What stays verifiable is the **uploaded artefact**. The ZIP must be reproducible so that the hash in §3.1 identifies exactly one set of bytes:
+What stays verifiable is the **uploaded artefact**. Packaging is a script, not a command to retype:
 
 ```bash
-# Deterministic: fixed timestamps, sorted entries, no extra attributes.
-cd src && find . -type f | LC_ALL=C sort | \
-  zip -X -q ../build/ms-account-picker-<version>.zip -@ && \
-  cd .. && sha256sum build/ms-account-picker-<version>.zip
+python3 tools/package.py --check     # packs, and packs again to prove the bytes match
 ```
 
-<!-- TODO: run this twice on different machines and confirm the hash matches before the
-     first upload. Reproducibility that has not been demonstrated is a claim, not a property. -->
+It exists because a plain `zip` is **not** reproducible, which was measured rather than assumed (2026-08-18). ZIP stores each file's mtime, so a fresh clone — where every file carries its checkout time — produces a different hash for identical content. The property would have looked present and been absent. The script pins entry order, timestamp, permissions and compression, and uses only Python's standard library, so it adds no dependency to a project that deliberately has none.
+
+Demonstrated on 2026-08-18: two packs byte-identical, and identical again after the working tree's mtimes were changed.
 
 ### 3.1 Artefact register
 
-| Version | Date | SHA-256 of the uploaded ZIP | Store item state | Approved by |
+| Version | Date | SHA-256 of the ZIP | Store item state | Approved by |
 | --- | --- | --- | --- | --- |
-| — | — | — | — | — |
+| 0.9.0 | 2026-08-18 | `cfa69712a45708f6f0cc0fb3d0cd200281eee9847cdfb937f24d16b0386b4e69` | packaged, not uploaded | Claude + D. H. |
 
 Every uploaded version is recorded here. A version without an entry is not approved.
 
