@@ -21,7 +21,7 @@ Options page  →  chrome.storage.local  →  Service Worker  →  DNR Dynamic R
 
 Do not build, suggest, or "prepare for" any of these:
 
-- **No tile portal / launcher page** — the extension has no UI beyond the options page
+- **No tile portal / launcher page** — the extension has no UI beyond the configuration surface
 - **No self-built authorize URLs** — see above, PKCE makes it impossible
 - **No Okta interaction** — the extension never touches the IdP chain beyond the ESTS authorize request
 - **No telemetry, no analytics, no error reporting** — nothing leaves the browser
@@ -90,8 +90,7 @@ ms-account-picker/
 │   ├── manifest.json
 │   ├── background/service-worker.js   # Rule sync only
 │   ├── ui/                            # The whole configuration UI + vendor strings
-│   ├── popup/                         # Shell — the primary surface
-│   ├── options/                       # Shell — same UI, opened from the extensions list
+│   ├── popup/                         # The one shell — action popup AND options_ui page
 │   ├── icons/                         # Rendered PNGs (Chrome takes no SVG)
 │   └── lib/rules.js                   # Rule building — pure, unit-testable
 ├── tools/package.py              # Reproducible ZIP for the store — stdlib only
@@ -105,7 +104,7 @@ ms-account-picker/
 
 - **Plain JavaScript, ES modules, no TypeScript, no bundler.** What is in `src/` is what runs in the browser.
 - `src/lib/rules.js` stays **pure**: configuration in, rule objects out. No `chrome.*` calls in there — that is what makes it unit-testable.
-- All `chrome.*` access lives in the service worker and the options page.
+- All `chrome.*` access lives in the service worker and the configuration UI.
 - Every function carries a comment explaining **intent** — reviewers of this repo are identity admins, not JS developers.
 - **Everything in this repository is English** — identifiers, code comments, commit messages, `docs/`, `README.md`, UI strings. Decided 2026-08-17 when the repository was set on course to be public: a German doc set would lock out most of its readers. There is no bilingual mode and no translation to maintain.
 - Tests use `node:test` + `node:assert`. No Jest, no Vitest, no fixtures.

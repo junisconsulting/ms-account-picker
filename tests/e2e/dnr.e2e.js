@@ -466,22 +466,23 @@ try {
     assert.deepEqual(registered[1].action, { type: "allow" });
   });
 
-  // --- the configuration UI, on BOTH surfaces ------------------------------
+  // --- the configuration UI ------------------------------------------------
   //
-  // The popup and the options page render the same module. Running the same
-  // checks against both is the direct proof that they really share it — and a
-  // broken save means a silently inert extension, which looks like nothing at all.
+  // One document serves as both the action popup and the options page
+  // (options_ui.page points at popup/popup.html), so there is one surface to
+  // check and no second copy that could drift from it. A broken save means a
+  // silently inert extension, which looks like nothing at all.
   const extId = sw.url.split("/")[2];
 
-  async function checkConfigSurface(label, path) {
-    console.log(`\nConfiguration UI — ${label}`);
+  async function checkConfigUi() {
+    console.log("\nConfiguration UI");
     // Start from an empty profile: the preceding blocks left site rules behind and
     // these checks assert on exact rule counts.
     await cdp.evaluate("chrome.storage.local.clear()");
     await sleep(300);
 
     const tab = await fetch(
-      `http://127.0.0.1:${devtoolsPort}/json/new?${encodeURIComponent(`chrome-extension://${extId}/${path}`)}`,
+      `http://127.0.0.1:${devtoolsPort}/json/new?${encodeURIComponent(`chrome-extension://${extId}/popup/popup.html`)}`,
       { method: "PUT" },
     ).then((r) => r.json());
     await sleep(600);
@@ -496,7 +497,7 @@ try {
            el.value = ${JSON.stringify(value)};
            el.dispatchEvent(new Event('change'));`);
 
-    await check(`${label}: renders the shared UI, with the manifest version`, async () => {
+    await check("renders the shared UI, with the manifest version", async () => {
       assert.match(await text("version"), /^v\d+\.\d+\.\d+$/);
       assert.equal(
         await page.evaluate("document.querySelectorAll('#site-list, #upn, #enabled').length"),
@@ -504,9 +505,25 @@ try {
       );
     });
 
+    // The header mark swaps to its light-ink variant on a dark ground. That swap
+    // was a matchMedia listener and is now a media query, so this is what holds
+    // the replacement honest: the browser re-evaluates it on its own, which is
+    // why the listener could go.
+    await check("the header mark follows the OS colour scheme", async () => {
+      const markFor = async (scheme) => {
+        await page.send("Emulation.setEmulatedMedia", {
+          features: [{ name: "prefers-color-scheme", value: scheme }],
+        });
+        return page.evaluate("getComputedStyle(document.querySelector('.logo')).content");
+      };
+      assert.match(await markFor("dark"), /icon-48-dark\.png/);
+      assert.match(await markFor("light"), /icon-48\.png/);
+      await page.send("Emulation.setEmulatedMedia", { features: [] });
+    });
+
     // The two elements in this UI that navigate away from the extension. Assert the
     // exact URLs: a typo, or a future edit, must not be able to point them elsewhere.
-    await check(`${label}: both outbound links point where they claim`, async () => {
+    await check("both outbound links point where they claim", async () => {
       assert.equal(
         await page.evaluate("document.getElementById('signout').href"),
         "https://login.microsoftonline.com/common/oauth2/v2.0/logout",
@@ -522,7 +539,7 @@ try {
     await set(`const c = document.getElementById('enabled');
                c.checked = true; c.dispatchEvent(new Event('change'));`);
     await sleep(300);
-    await check(`${label}: activating the profile registers the default rule`, async () => {
+    await check("activating the profile registers the default rule", async () => {
       const registered = await rules();
       assert.equal(registered.length, 1);
       assert.deepEqual(registered[0].action.redirect.transform.queryTransform.addOrReplaceParams, [
@@ -536,14 +553,14 @@ try {
                r.checked = true; r.dispatchEvent(new Event('change'));`);
     await commit("upn", "evil@contoso.com&redirect_uri=https://attacker.test");
     await sleep(400);
-    await check(`${label}: a UPN with a smuggled parameter produces no rule`, async () => {
+    await check("a UPN with a smuggled parameter produces no rule", async () => {
       assert.deepEqual(await rules(), []);
       assert.match(await text("status"), /no rule is active/);
     });
 
     await commit("upn", UPN);
     await sleep(400);
-    await check(`${label}: a valid admin account produces the login_hint rule`, async () => {
+    await check("a valid admin account produces the login_hint rule", async () => {
       const registered = await rules();
       assert.equal(registered.length, 1);
       assert.deepEqual(registered[0].action.redirect.transform.queryTransform.addOrReplaceParams, [
@@ -560,7 +577,7 @@ try {
       width: 368, height: 1600, deviceScaleFactor: 1, mobile: false,
     });
     await sleep(250);
-    await check(`${label}: fits inside Chrome's 600px popup cap`, async () => {
+    await check("fits inside Chrome's 600px popup cap", async () => {
       const height = await page.evaluate("Math.ceil(document.body.getBoundingClientRect().height)");
       assert.ok(height <= 600, `content is ${height}px tall, popup caps at 600px`);
     });
@@ -570,7 +587,7 @@ try {
     await set(`document.getElementById('site-domain').value = ${JSON.stringify(SITE_A)};
                document.getElementById('site-add').click();`);
     await sleep(400);
-    await check(`${label}: adding a site exception adds its guard and injection`, async () => {
+    await check("adding a site exception adds its guard and injection", async () => {
       const registered = await rules();
       assert.equal(registered.length, 3, JSON.stringify(registered.map((r) => r.id)));
       assert.equal(await page.evaluate("document.querySelectorAll('#site-list .site').length"), 1);
@@ -580,7 +597,7 @@ try {
       );
     });
 
-    await check(`${label}: an invalid domain is refused, nothing registered for it`, async () => {
+    await check("an invalid domain is refused, nothing registered for it", async () => {
       await set(`document.getElementById('site-domain').value = 'a|b';
                  document.getElementById('site-add').click();`);
       await sleep(300);
@@ -588,13 +605,13 @@ try {
       assert.equal((await rules()).length, 3);
     });
 
-    await check(`${label}: removing the site removes its rules again`, async () => {
+    await check("removing the site removes its rules again", async () => {
       await set("document.querySelector('#site-list .rm').click();");
       await sleep(400);
       assert.equal((await rules()).length, 1);
     });
 
-    await check(`${label}: deactivating the profile removes every rule`, async () => {
+    await check("deactivating the profile removes every rule", async () => {
       await set(`const c = document.getElementById('enabled');
                  c.checked = false; c.dispatchEvent(new Event('change'));`);
       await sleep(400);
@@ -604,8 +621,7 @@ try {
     await fetch(`http://127.0.0.1:${devtoolsPort}/json/close/${tab.id}`);
   }
 
-  await checkConfigSurface("popup", "popup/popup.html");
-  await checkConfigSurface("options page", "options/options.html");
+  await checkConfigUi();
 } finally {
   chrome.kill();
   server.close();

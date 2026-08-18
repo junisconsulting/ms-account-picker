@@ -38,7 +38,7 @@ async function syncRules() {
 // rule shape, so the old rule must not survive it.
 chrome.runtime.onInstalled.addListener(syncRules);
 
-// The options page is the only writer. Dynamic rules persist across browser
+// The configuration UI is the only writer. Dynamic rules persist across browser
 // restarts on their own, so there is deliberately no onStartup listener.
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === "local") syncRules();

@@ -12,7 +12,30 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Nothing yet.
+**Rules and permissions:** no change. `permissions`, `host_permissions` and the rule
+builder are byte-identical. The manifest is touched on exactly one line: `options_ui.page`
+now names the popup document instead of a second, identical one.
+
+### Changed
+
+- The options page and the action popup are the same document. `action.default_popup`
+  and `options_ui.page` both name `popup/popup.html`, which renders the UI it always
+  rendered — the second shell was a byte-identical copy that could only ever drift.
+- The header mark follows the operating system's colour scheme through a CSS media
+  query instead of a `matchMedia` listener. Same behaviour, a theme change while the
+  popup is open included.
+
+### Removed
+
+- `src/options/` — see above.
+- The 25 committed logo renders under `assets/logo/preview/` and the four rejected
+  logo drafts. The chosen mark stays, as `assets/logo/mark.svg` and `mark-dark.svg`.
+
+### Fixed
+
+- `assets/logo/render.sh` reproduces `src/icons/icon-48-dark.png`. It used to render
+  five sizes of a single variant, which left the dark header icon with no path back
+  to its source. All six shipped PNGs verified byte-identical after the change.
 
 ## [0.10.0] — 2026-08-18
 

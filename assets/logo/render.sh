@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Renders the logo SVGs to the PNG sizes the extension needs.
+# Renders the logo to the PNG sizes the extension needs.
 #
 # Chrome extensions do not accept SVG icons, so the PNGs are build output — but
 # they are committed, because the manifest references them and the repo has no
@@ -9,9 +9,11 @@
 # Sizes: 16/24/32 for action.default_icon (toolbar, 1x/1.5x/2x DPI),
 #        16/48/128 for the top-level icons key (favicon / extensions page / store).
 #
-# Usage: bash assets/logo/render.sh [variant]     e.g. `render.sh variant-c-shield`
-#        With no argument every variant is rendered into assets/logo/preview/.
-#        With a variant name it also writes src/icons/, i.e. it picks the winner.
+# icon-48-dark.png comes from its own SVG: on a dark ground the navy half of the
+# mark disappears, so that variant swaps it for light ink. It is used by the
+# header in config-ui.css and by nothing else, hence the single size.
+#
+# Usage: bash assets/logo/render.sh
 
 set -eu
 cd "$(dirname "$0")/../.."
@@ -37,19 +39,9 @@ HTML
     --window-size="$size,$size" --screenshot="$out" "$WORK/page.html" 2>/dev/null
 }
 
-mkdir -p assets/logo/preview
-for svg in assets/logo/variant-*.svg; do
-  name="$(basename "$svg" .svg)"
-  for size in $SIZES; do
-    render "$svg" "$size" "assets/logo/preview/${name}-${size}.png"
-  done
-  echo "rendered $name"
+mkdir -p src/icons
+for size in $SIZES; do
+  render assets/logo/mark.svg "$size" "src/icons/icon-${size}.png"
 done
-
-if [ "$#" -ge 1 ]; then
-  mkdir -p src/icons
-  for size in $SIZES; do
-    render "assets/logo/$1.svg" "$size" "src/icons/icon-${size}.png"
-  done
-  echo "selected $1 -> src/icons/"
-fi
+render assets/logo/mark-dark.svg 48 src/icons/icon-48-dark.png
+echo "rendered -> src/icons/"

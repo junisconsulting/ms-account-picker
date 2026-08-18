@@ -21,8 +21,6 @@
   --radius: 8px;
 }
 
-.hdr .logo.dark { content: image-set(url("../icons/icon-48-dark.png") 1x); }
-
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #10151f;
@@ -56,10 +54,16 @@ body {
 .hdr { display: flex; align-items: center; gap: 10px; }
 .hdr .logo {
   width: 30px; height: 30px; flex: none;
-  /* The mark is navy and yellow. On a dark ground the navy half disappears, so
-     the header uses a variant whose navy is swapped for light ink — still
-     two-tone, which is what the junis logo rules actually require. */
   content: image-set(url("../icons/icon-48.png") 1x);
+}
+/* The mark is navy and yellow. On a dark ground the navy half disappears, so the
+   header swaps in a variant whose navy is light ink — still two-tone, which is
+   what the junis logo rules actually require. This stays in CSS rather than a
+   matchMedia listener: prefers-color-scheme re-evaluates on its own, so a theme
+   flip while the popup is open needs no JavaScript. Placed after the rule above,
+   because both selectors carry the same specificity. */
+@media (prefers-color-scheme: dark) {
+  .hdr .logo { content: image-set(url("../icons/icon-48-dark.png") 1x); }
 }
 .hdr-text { flex: 1; min-width: 0; }
 .hdr h1 { margin: 0; font-size: 14px; font-weight: 650; letter-spacing: -0.01em; }

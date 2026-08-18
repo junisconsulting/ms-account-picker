@@ -1,6 +1,6 @@
-// The whole configuration UI, rendered into a host element. Imported unchanged by
-// both the popup and the options page, which is why neither of them contains any
-// markup or logic of its own.
+// The whole configuration UI, rendered into a host element. The single shell that
+// imports it is both the action popup and the options page, which is why it holds
+// no markup and no logic of its own.
 //
 // SECURITY RULE FOR THIS FILE: the single innerHTML assignment below writes a
 // static template with no interpolation of any kind. Every dynamic value — above
@@ -28,10 +28,10 @@ import { VENDOR } from "./vendor.js";
 
 const STORAGE_KEYS = ["enabled", "mode", "upn", "sites"];
 
+/** The two global modes, as the status line names them. Per-site "off" is not one of them. */
 const MODE_LABEL = {
   picker: "Account picker",
   hint: "Direct sign-in",
-  off: "Leave alone",
 };
 
 const TEMPLATE = `
@@ -163,17 +163,8 @@ export function renderConfigUi(host) {
   $("repo").href = VENDOR.repository;
   $("vendor").textContent = VENDOR.legalName;
 
-  // The mark needs its light-ink variant on a dark ground. matchMedia rather than
-  // a CSS-only swap, because the popup can be open while the OS theme flips.
-  const darkMedia = window.matchMedia("(prefers-color-scheme: dark)");
-  const applyScheme = () => host.querySelector(".logo").classList.toggle("dark", darkMedia.matches);
-  darkMedia.addEventListener("change", applyScheme);
-  applyScheme();
-
   /** The configuration as last read or edited. Persisted in one write, always whole. */
   let config = { enabled: false, mode: "picker", upn: "", sites: [] };
-
-  const selectedMode = () => host.querySelector('input[name="mode"]:checked').value;
 
   function report(message, kind = "") {
     statusEl.textContent = message;
@@ -196,10 +187,19 @@ export function renderConfigUi(host) {
     }, 250);
   }
 
-  /** One write, always the whole configuration — a partial set() would leave stale keys behind. */
-  async function persist() {
+  /**
+   * The end of every edit path: redraw, store, report — in that order, in one
+   * place, so no path can quietly skip a step. A write without the redraw leaves
+   * the surface claiming something storage no longer says.
+   *
+   * The write is always the whole configuration; a partial set() would leave
+   * stale keys behind.
+   */
+  async function commit() {
+    paint();
     await chrome.storage.local.set(config);
     refreshRuleCount();
+    reportEffect();
   }
 
   /** Says what the current configuration will actually do, including when that is "nothing". */
@@ -228,16 +228,13 @@ export function renderConfigUi(host) {
       row.querySelector(".dom").textContent = site.domain;
       const mode = row.querySelector(".mode");
       mode.value = site.mode;
-      mode.addEventListener("change", async () => {
+      mode.addEventListener("change", () => {
         config.sites[index].mode = mode.value;
-        await persist();
-        reportEffect();
+        commit();
       });
-      row.querySelector(".rm").addEventListener("click", async () => {
+      row.querySelector(".rm").addEventListener("click", () => {
         config.sites.splice(index, 1);
-        paintSites();
-        await persist();
-        reportEffect();
+        commit();
       });
       siteList.append(row);
     });
@@ -271,32 +268,28 @@ export function renderConfigUi(host) {
     refreshRuleCount();
   }
 
-  enabled.addEventListener("change", async () => {
+  enabled.addEventListener("change", () => {
     config.enabled = enabled.checked;
-    paint();
-    await persist();
-    reportEffect();
+    commit();
   });
 
+  // `change` fires on the radio that just became checked, never on the one that
+  // lost the selection — so the event's own radio is the newly chosen mode.
   for (const radio of host.querySelectorAll('input[name="mode"]')) {
-    radio.addEventListener("change", async () => {
-      config.mode = selectedMode();
-      paint();
-      await persist();
-      reportEffect();
+    radio.addEventListener("change", () => {
+      config.mode = radio.value;
+      commit();
     });
   }
 
   // `change` on a text input fires on blur and on Enter, not per keystroke, so
   // the UPN is never validated half-typed.
-  upn.addEventListener("change", async () => {
+  upn.addEventListener("change", () => {
     config.upn = upn.value.trim();
-    paint();
-    await persist();
-    reportEffect();
+    commit();
   });
 
-  async function addSite() {
+  function addSite() {
     const domain = siteDomain.value.trim().toLowerCase();
     if (!isValidDomain(domain)) {
       return report("Enter a plain domain, like make.powerautomate.com.", "err");
@@ -306,9 +299,7 @@ export function renderConfigUi(host) {
     }
     config.sites.push({ domain, mode: siteMode.value });
     siteDomain.value = "";
-    paintSites();
-    await persist();
-    reportEffect();
+    commit();
   }
 
   $("site-add").addEventListener("click", addSite);

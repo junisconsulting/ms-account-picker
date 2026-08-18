@@ -1,9 +1,11 @@
 <!doctype html>
 <!--
-  Shell only. The entire UI lives in ../ui/config-ui.js and is shared with the
-  other surface — without a bundler an HTML shell cannot be shared, and fetching
-  a fragment would need `fetch` (forbidden) plus web_accessible_resources.
-  Nothing but boilerplate belongs in here.
+  Shell only, and the only one. The entire UI lives in ../ui/config-ui.js.
+  manifest options_ui.page points at this same file, so the action popup and the
+  options page are one document rather than two identical shells: without a
+  bundler an HTML shell cannot be shared, and fetching a fragment would need
+  `fetch` (forbidden) plus web_accessible_resources. Nothing but boilerplate
+  belongs in here.
 -->
 <html lang="en">
   <head>

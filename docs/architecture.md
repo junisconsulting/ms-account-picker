@@ -56,14 +56,14 @@ That closes what used to be an open verification (V1). It was carried as "undocu
 Deliberately minimal — no framework, no build step for the extension itself, no remote code.
 
 ```
-Popup / options page  →  chrome.storage.local  →  Service Worker  →  DNR dynamic rules
-   (mode, UPN, sites)       (configuration)         (rule sync)      (request transform)
+Configuration UI  →  chrome.storage.local  →  Service Worker  →  DNR dynamic rules
+ (mode, UPN, sites)     (configuration)         (rule sync)      (request transform)
 ```
 
 | Component | File | Job |
 | --- | --- | --- |
 | Configuration UI | `src/ui/config-ui.js` | Activation, mode, UPN and the per-site list; writes to `chrome.storage.local`. **The only configuration source** — no policy defaults, deliberately manual (`open-questions.md` F3) |
-| Popup / options page | `src/popup/`, `src/options/` | Two shells that render the same UI. The popup is the primary surface; the options page exists because Chrome links to it from the extensions list |
+| Shell | `src/popup/` | One document, two entry points: `action.default_popup` and `options_ui.page` both name it, so the popup and the link Chrome offers on the extensions page are the same surface and cannot drift apart |
 | Rule builder | `src/lib/rules.js` | Configuration → rule objects. Purely functional, no `chrome.*` calls, unit-testable |
 | Service worker | `src/background/service-worker.js` | Reads storage, syncs the dynamic rules. Nothing else |
 | Manifest | `src/manifest.json` | Permissions, MV3 declaration |

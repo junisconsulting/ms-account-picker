@@ -10,7 +10,5 @@ export const VENDOR = {
   // The legal name, because that is what the footer shows — the same name that
   // signs NOTICE. "junis" alone is the brand, not the entity.
   legalName: "junis GmbH",
-  name: "junis",
-  website: "https://junis.de",
   repository: "https://github.com/junisconsulting/ms-account-picker",
 };

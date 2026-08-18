@@ -1,9 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <title>MS Account Picker — Variant C: shield and chevron</title>
-  <!-- Emphasis on protection rather than choice. The most solid silhouette of
-       the three, which is what carries at 16 px. -->
-  <path d="M256 36 L444 110 V270 C444 374 352 446 256 476 C160 446 68 374 68 270 V110 Z"
-        fill="#061838"/>
-  <path d="M182 254 l54 56 l104 -126" fill="none" stroke="#fcd218"
-        stroke-width="54" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>

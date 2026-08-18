@@ -2,7 +2,7 @@
 
 Manifest-V3 browser extension for Microsoft Edge. It appends a single query parameter (`prompt=select_account` or `login_hint=<UPN>`) to the OAuth authorize request, so that an admin working in a dedicated browser profile is not signed in automatically with the wrong account by the injected workforce PRT.
 
-**Status: Phase 2 — implemented, not yet rolled out.** Rule builder, service worker, popup and options page are in place; 25 unit tests and 38 end-to-end checks pass. Still open: the store item that produces a stable extension ID, and a full run of the manual verification matrix.
+**Status: Phase 2 — implemented, not yet rolled out.** Rule builder, service worker and the configuration UI are in place; 25 unit tests and 33 end-to-end checks pass. Still open: the store item that produces a stable extension ID, and a full run of the manual verification matrix.
 
 > 🔴 The extension operates **inside the authentication flow of privileged accounts** and is classified as a T0 influence path. Every change to the manifest, to permissions, or to a rule condition requires a blocking security review. See [docs/security-review.md](docs/security-review.md).
 
