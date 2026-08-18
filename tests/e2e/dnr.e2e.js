@@ -551,6 +551,21 @@ try {
       ]);
     });
 
+    // Chrome caps an action popup at 800x600 and scrolls past that. This is the
+    // tallest state with nothing expanded — active, direct sign-in, account filled
+    // — so if it fits, every other collapsed state does. Measured at the popup's
+    // own min-width, against the body box: documentElement.scrollHeight is clamped
+    // to the viewport and would report the viewport height for shorter content.
+    await page.send("Emulation.setDeviceMetricsOverride", {
+      width: 368, height: 1600, deviceScaleFactor: 1, mobile: false,
+    });
+    await sleep(250);
+    await check(`${label}: fits inside Chrome's 600px popup cap`, async () => {
+      const height = await page.evaluate("Math.ceil(document.body.getBoundingClientRect().height)");
+      assert.ok(height <= 600, `content is ${height}px tall, popup caps at 600px`);
+    });
+    await page.send("Emulation.clearDeviceMetricsOverride");
+
     await commit("site-mode", "picker");
     await set(`document.getElementById('site-domain').value = ${JSON.stringify(SITE_A)};
                document.getElementById('site-add').click();`);

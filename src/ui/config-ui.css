@@ -40,7 +40,7 @@
 
 body {
   margin: 0;
-  padding: 14px;
+  padding: 12px;
   min-width: 23rem;
   max-width: 34rem;
   background: var(--bg);
@@ -48,7 +48,7 @@ body {
   font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 /* --- header --------------------------------------------------------------- */
@@ -77,20 +77,42 @@ body {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 12px;
+  padding: 11px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
-.card h2 {
+.card h2, .card summary {
   margin: 0; font-size: 10.5px; font-weight: 650; letter-spacing: .07em;
   text-transform: uppercase; color: var(--muted);
 }
-.card h2:not(:first-child) { margin-top: 4px; }
 
 /* A deactivated profile has nothing to configure — dim it rather than hide it,
    so the shape of the settings stays visible. */
 .card.dim { opacity: .45; }
+
+/* --- collapsible sections ------------------------------------------------- */
+
+/* <details> rather than a scripted accordion: the browser owns the open state,
+   and keyboard operation plus screen-reader semantics come for free. A popup is
+   capped at 600px tall by Chrome, so what is rarely used has to fold away. */
+details.card { display: block; }
+details.card[open] { display: flex; }
+details.card summary {
+  cursor: pointer; list-style: none;
+  display: flex; align-items: center; gap: 6px;
+}
+details.card summary::-webkit-details-marker { display: none; }
+/* Own marker, so it sits before the label and rotates instead of jumping. */
+details.card summary::before {
+  content: ""; flex: none; width: 0; height: 0;
+  border: 4px solid transparent; border-left-color: currentColor;
+  transition: transform .15s ease;
+}
+details.card[open] summary::before { transform: rotate(90deg) translateX(1px); }
+details.card summary:hover { color: var(--text); }
+details.card summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.count { font-variant-numeric: tabular-nums; }
 
 .row { display: flex; gap: 9px; align-items: flex-start; cursor: pointer; }
 .row input { margin: 2px 0 0; flex: none; accent-color: var(--accent); }
@@ -99,6 +121,10 @@ body {
 .hint code { font: 500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
 
 .fld { font-weight: 600; font-size: 12px; }
+
+/* Shown only for direct sign-in — see paint() in config-ui.js. */
+.acct { display: flex; flex-direction: column; gap: 6px; }
+.acct[hidden] { display: none; }
 
 input[type="email"], input[type="text"], select {
   font: inherit;
@@ -128,6 +154,13 @@ button:hover, .btn:hover { filter: brightness(1.1); }
    API and no permission. Only the properties a link does not already have. */
 .btn { display: inline-block; align-self: flex-start; text-decoration: none; }
 
+/* Sign-out is a recovery action, not a goal. It must not outweigh everything
+   else on the surface, which a filled accent button does. */
+.btn.secondary {
+  color: var(--text); background: transparent; border-color: var(--line);
+}
+.btn.secondary:hover { filter: none; border-color: var(--accent); color: var(--accent); }
+
 /* --- site list ----------------------------------------------------------- */
 
 .sites { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 13rem; overflow-y: auto; }
@@ -148,8 +181,12 @@ button:hover, .btn:hover { filter: brightness(1.1); }
 }
 .site .rm:hover { color: var(--danger); border-color: var(--danger); filter: none; }
 
-.addrow { display: flex; gap: 6px; }
-.addrow input { flex: 1; min-width: 0; }
+/* Two rows, not three controls side by side: at the popup's minimum width the
+   domain field was clipped mid-hostname ("make.powerautoma…"). */
+.addrow { display: flex; flex-direction: column; gap: 6px; }
+.addrow input { width: 100%; }
+.addrow-2 { display: flex; gap: 6px; }
+.addrow-2 select { flex: 1; min-width: 0; }
 
 /* --- status and footer --------------------------------------------------- */
 
@@ -160,7 +197,7 @@ button:hover, .btn:hover { filter: brightness(1.1); }
 .ftr {
   display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
   font-size: 11px; color: var(--muted);
-  border-top: 1px solid var(--line); padding-top: 9px;
+  border-top: 1px solid var(--line); padding-top: 8px;
 }
 .ftr .rules { font-variant-numeric: tabular-nums; }
 .ftr a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }

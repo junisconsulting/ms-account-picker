@@ -39,7 +39,7 @@ const TEMPLATE = `
   <img class="logo" src="../icons/icon-48.png" alt="">
   <div class="hdr-text">
     <h1>MS Account Picker</h1>
-    <p class="sub">Choose the Microsoft account you sign in with, instead of being signed in automatically.</p>
+    <p class="sub">Choose which account you sign in with.</p>
   </div>
   <span class="ver" id="version"></span>
 </header>
@@ -54,8 +54,8 @@ const TEMPLATE = `
   </label>
 </section>
 
-<section class="card" id="config">
-  <h2>Default for every Microsoft sign-in</h2>
+<section class="card cfg" id="config">
+  <h2>When you sign in to Microsoft</h2>
   <label class="row">
     <input type="radio" name="mode" value="picker">
     <span class="grow">
@@ -67,40 +67,47 @@ const TEMPLATE = `
     <input type="radio" name="mode" value="hint">
     <span class="grow">
       <strong>Direct sign-in</strong>
-      <small>Go straight to the account below. No other account stays reachable.</small>
+      <small>Go straight to one account. No other account stays reachable.</small>
     </span>
   </label>
 
-  <label class="fld" for="upn">Account to sign in with</label>
-  <input type="email" id="upn" autocomplete="off" spellcheck="false"
-         placeholder="you@contoso.onmicrosoft.com">
-  <small class="hint">Used by direct sign-in. It is written into the sign-in URL, so it also
-    appears in browser history and proxy logs.</small>
+  <div class="acct" id="account">
+    <label class="fld" for="upn">Account to sign in with</label>
+    <input type="email" id="upn" autocomplete="off" spellcheck="false"
+           placeholder="you@contoso.onmicrosoft.com">
+    <small class="hint">In the sign-in URL, so also in history and proxy logs.</small>
+  </div>
+</section>
 
-  <h2>Exceptions per site</h2>
-  <small class="hint">Some sites you use with more than one account — those usually want the
-    picker even when direct sign-in is the default. Enter the exact host you open,
-    like <code>make.powerautomate.com</code>; a parent domain does not cover its
-    subdomains.</small>
+<details class="card cfg">
+  <summary>Exceptions for specific sites<span class="count" id="site-count"></span></summary>
+  <small class="hint">A site you use with more than one account usually wants the picker even
+    when direct sign-in is the default. Enter the exact host, like
+    <code>make.powerautomate.com</code> — a parent domain does not cover its subdomains.</small>
   <ul class="sites" id="site-list"></ul>
   <div class="addrow">
     <input type="text" id="site-domain" autocomplete="off" spellcheck="false"
            placeholder="make.powerautomate.com">
-    <select id="site-mode">
-      <option value="picker">Account picker</option>
-      <option value="hint">Direct sign-in</option>
-      <option value="off">Leave alone</option>
-    </select>
-    <button type="button" id="site-add">Add</button>
+    <div class="addrow-2">
+      <select id="site-mode">
+        <option value="picker">Account picker</option>
+        <option value="hint">Direct sign-in</option>
+        <option value="off">Leave alone</option>
+      </select>
+      <button type="button" id="site-add">Add</button>
+    </div>
   </div>
+</details>
 
-  <h2>Already signed in somewhere?</h2>
+<details class="card cfg">
+  <summary>Already signed in to a site?</summary>
   <small class="hint">A site you are already signed in to does not ask again, so nothing above
-    can apply to it. Sign out of Microsoft and the next sign-in comes back through these
-    settings. A few sites keep their own session until the browser is restarted.</small>
-  <a class="btn" id="signout" href="https://login.microsoftonline.com/common/oauth2/v2.0/logout"
+    can apply to it. Signing out hands the next sign-in back to these settings. A few sites
+    keep their own session until the browser is restarted.</small>
+  <a class="btn secondary" id="signout"
+     href="https://login.microsoftonline.com/common/oauth2/v2.0/logout"
      target="_blank" rel="noopener">Sign out of Microsoft</a>
-</section>
+</details>
 
 <p class="status" id="status" role="status"></p>
 
@@ -147,7 +154,9 @@ export function renderConfigUi(host) {
   const siteMode = $("site-mode");
   const statusEl = $("status");
   const rowTemplate = $("site-row");
-  const configCard = $("config");
+  const account = $("account");
+  const siteCount = $("site-count");
+  const configCards = host.querySelectorAll(".cfg");
 
   // Manifest is the single source of truth for the version.
   $("version").textContent = `v${chrome.runtime.getManifest().version}`;
@@ -197,7 +206,7 @@ export function renderConfigUi(host) {
   function reportEffect() {
     if (!config.enabled) return report("Inactive in this profile.");
     if (config.mode === "hint" && !isValidUpn(config.upn)) {
-      return report("Direct sign-in needs a valid account — no rule is active.", "warn");
+      return report("Needs a valid account — no rule is active.", "warn");
     }
     const exceptions = config.sites.length;
     report(
@@ -208,6 +217,10 @@ export function renderConfigUi(host) {
   }
 
   function paintSites() {
+    // The count rides on the collapsed summary, so a configured exception is
+    // visible without opening the section — otherwise collapsing it would hide
+    // the fact that something is configured at all.
+    siteCount.textContent = config.sites.length ? ` (${config.sites.length})` : "";
     siteList.replaceChildren();
     config.sites.forEach((site, index) => {
       const row = rowTemplate.content.firstElementChild.cloneNode(true);
@@ -235,7 +248,11 @@ export function renderConfigUi(host) {
     host.querySelector(`input[name="mode"][value="${config.mode}"]`).checked = true;
     upn.value = config.upn;
     upn.classList.toggle("invalid", config.mode === "hint" && !isValidUpn(config.upn));
-    configCard.classList.toggle("dim", !config.enabled);
+    // The account field only exists for direct sign-in. Picker mode is the default,
+    // so leaving it visible would greet every new user with a field they are not
+    // meant to fill in, plus its proxy-log warning.
+    account.hidden = config.mode !== "hint";
+    for (const card of configCards) card.classList.toggle("dim", !config.enabled);
     paintSites();
   }
 

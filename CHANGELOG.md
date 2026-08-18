@@ -12,7 +12,27 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Nothing yet.
+**Rules and permissions:** no change. The manifest, the rule builder and the service worker are untouched — this is the configuration surface only.
+
+### Changed
+
+- The popup no longer scrolls. Chrome caps an action popup at 600 px tall and the
+  content had grown to 848–935 px, so the fix was less on screen at once, not more
+  height. Measured: 488 px with the account picker selected, 576 px with direct
+  sign-in.
+- The account field appears only when direct sign-in is selected. The picker is the
+  default, so the first thing a new user saw used to be a field they were not meant
+  to fill in, together with its proxy-log notice.
+- "Exceptions for specific sites" and "Already signed in to a site?" are now
+  collapsed sections, each in its own box. A configured exception still shows as a
+  count on the collapsed heading, so folding one away never hides that something is
+  set.
+- Sign-out is styled as the secondary action it is. It recovers from a state no
+  setting can reach; it is not the thing to do first.
+- "Default for every Microsoft sign-in" became "When you sign in to Microsoft" —
+  "default" only means something once you know exceptions exist.
+- Adding a site exception puts the host field on its own line. At the popup's
+  minimum width it used to be clipped mid-hostname.
 
 ## [0.9.0] — 2026-08-18
 
