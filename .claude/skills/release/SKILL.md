@@ -9,21 +9,32 @@ The delivery route auto-updates and cannot be pinned (`CLAUDE.md` security rule 
 
 Six steps, in order. Steps 2 and 3 produce evidence; steps 4–6 publish it.
 
-## 0. Decide the number
+## 0. Choose the version — rules, not gut feeling
 
 The version lives in **exactly one place**: `version` in `src/manifest.json`. The UI reads it at runtime via `chrome.runtime.getManifest().version`, so there is no second copy to bump and no build step where it could drift. Never add a version to `src/ui/vendor.js` — that file says why.
 
-| Change since the last release | Bump |
-| --- | --- |
-| A rule condition, an action, a permission, a host | **Minor at least.** Anything the security review had to look at is not a patch |
-| A new mode, a new configuration surface | Minor |
-| UI copy, docs, a fix with no rule change | Patch |
-| The first publicly listed version | `1.0.0` — see below |
+Semantic versioning, translated for a browser extension with no public API: the "contract" is what an administrator must **do** or will **notice**. Judge the **whole diff since the last release** and take the **highest** rule that applies.
+
+| Bump | Rule | Examples |
+| --- | --- | --- |
+| **MAJOR** (1.x.y → 2.0.0) | The update demands human action outside the extension before it works again | A new `permissions` or `host_permissions` entry — the browser holds the extension until the added access is accepted, and the customer owes a fresh risk assessment (A4). A stored-configuration change without automatic migration, so profiles must be reconfigured. A raised `minimum_chrome_version` that excludes part of the fleet |
+| **MINOR** (x.4.y → x.5.0) | Behaviour or capability changes, but nobody has to act | A changed rule condition — which requests are touched is different now. A new mode, a new configuration surface, a new per-site option. Endpoint coverage added or dropped |
+| **PATCH** (x.y.2 → x.y.3) | Same capabilities, just working better | Bug fixes with no rule change, UI copy, icons, documentation, test-only changes |
+
+Two questions settle almost every case: *"Must an administrator **do** anything after this update?"* → MAJOR. *"Will the extension **behave** differently?"* → MINOR. Neither → PATCH.
+
+Edge rules:
+
+- **Mixed releases take the highest bump.** One rule change plus five fixes is a MINOR.
+- **A change to a rule condition is never a PATCH**, even when it fixes a bug. The set of requests the extension touches changed, and that is the one thing a customer's security review exists to see. "It was only a fix" is how that change gets hidden.
+- **Security fixes are a PATCH** and ship promptly — unless the fix itself demands action, which makes it MAJOR like anything else.
+- **Under-bumping costs more here than in most projects.** The delivery route auto-updates and cannot be pinned (F9), so the customer cannot decline a version and read up afterwards. The number and the changelog entry are the *only* signals they get, and they arrive with the update, not before it. When torn between two bumps, take the higher one.
+- **Pre-1.0:** the same MINOR/PATCH rules apply. `1.0.0` is never reached by counting — it is the deliberate declaration that this is fit for a listed, production release. Pre-1.0 numbers belong to unlisted pilot uploads.
 
 Two constraints that are not preferences:
 
-- **Versions only ever go up.** The store rejects an upload whose version is not higher than the published one. There is no way back down, so do not spend a range you may want.
-- **`0.x` means "no stability promise" in SemVer.** That is the wrong signal for something a customer force-installs into the authentication path of privileged accounts. Pre-1.0 numbers belong to unlisted pilot uploads; the first *listed* release is `1.0.0`.
+- **Versions only ever go up.** The store rejects an upload whose version is not higher than the published one. There is no way back down, so do not spend a range you may still want.
+- **`0.x` means "no stability promise" in SemVer.** That is the wrong signal for something a customer force-installs into the authentication path of privileged accounts.
 
 Chrome accepts one to four dot-separated integers, each 0–65535.
 
