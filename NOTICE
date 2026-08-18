@@ -10,3 +10,13 @@ src/icons/ are brand assets of junis GmbH. They are not part of the Apache
 License grant (see LICENSE section 6). The code may be forked freely; a fork
 that is redistributed must replace the mark and must not present itself as a
 junis product.
+
+THIRD-PARTY MATERIAL
+
+src/ui/config-ui.js embeds the GitHub mark from Octicons as an inline SVG path:
+
+    Octicons — Copyright (c) GitHub, Inc.
+    Licensed under the MIT License. https://github.com/primer/octicons
+
+It is the only third-party material in this distribution. The extension has no
+runtime dependencies.

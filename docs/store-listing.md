@@ -132,7 +132,7 @@ This is the sign-in endpoint whose authorize request the extension modifies, and
 
 **Worth stating in the listing rather than only here:** in direct sign-in mode the configured account name is written into the sign-in URL. That is what makes the mode work, and it means the address appears in browser history and in any proxy log on the path — the same address Microsoft's own sign-in logs already record. It is documented in `security-review.md` §5 and named in the extension's own UI.
 
-🟡 **Privacy policy URL** — required by the dashboard. Needs the junis privacy policy address; do not invent one.
+**Privacy policy URL** — `https://junis.de/pages/datenschutz.html`
 
 ## Assets
 

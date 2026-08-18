@@ -504,13 +504,19 @@ try {
       );
     });
 
-    // The one element in this UI that navigates away from the extension. Assert the
-    // exact URL: a typo, or a future edit, must not be able to point it elsewhere.
-    await check(`${label}: the sign-out link points at the ESTS logout endpoint`, async () => {
+    // The two elements in this UI that navigate away from the extension. Assert the
+    // exact URLs: a typo, or a future edit, must not be able to point them elsewhere.
+    await check(`${label}: both outbound links point where they claim`, async () => {
       assert.equal(
         await page.evaluate("document.getElementById('signout').href"),
         "https://login.microsoftonline.com/common/oauth2/v2.0/logout",
       );
+      assert.equal(
+        await page.evaluate("document.getElementById('repo').href"),
+        "https://github.com/junisconsulting/ms-account-picker",
+      );
+      // The footer carries the legal name, not the brand short name.
+      assert.equal(await text("vendor"), "junis GmbH");
     });
 
     await set(`const c = document.getElementById('enabled');

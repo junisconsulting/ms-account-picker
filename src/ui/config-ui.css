@@ -164,3 +164,10 @@ button:hover, .btn:hover { filter: brightness(1.1); }
 }
 .ftr .rules { font-variant-numeric: tabular-nums; }
 .ftr a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.ftr .by { display: flex; align-items: center; gap: 7px; }
+
+/* The mark carries the link on its own, so it takes no underline. Muted at rest
+   so the footer stays quiet, full ink on hover to read as clickable. */
+.ftr .gh { display: inline-flex; text-decoration: none; color: var(--muted); }
+.ftr .gh:hover { color: var(--text); }
+.ftr .gh svg { fill: currentColor; display: block; }
