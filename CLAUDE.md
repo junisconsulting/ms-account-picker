@@ -70,7 +70,7 @@ Unit-testable (and therefore mandatory as a unit test): UPN → DNR rule object 
 ```
 ms-account-picker/
 ├── CLAUDE.md                     # This file — canonical project-wide rules
-├── README.md                     # Purpose, status, quick start (German)
+├── README.md                     # Purpose, status, quick start
 ├── .claude/
 │   ├── settings.json             # Permissions + Stop hook
 │   ├── hooks/verify.sh           # The deterministic gate (exit 0 green / 2 red)
