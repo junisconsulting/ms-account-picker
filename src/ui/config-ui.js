@@ -92,7 +92,7 @@ const TEMPLATE = `
   <h2>Already signed in somewhere?</h2>
   <small class="hint">A site you are already signed in to does not ask again, so nothing above
     can apply to it. Sign out of Microsoft and the next sign-in comes back through these
-    settings.</small>
+    settings. A few sites keep their own session until the browser is restarted.</small>
   <a class="btn" id="signout" href="https://login.microsoftonline.com/common/oauth2/v2.0/logout"
      target="_blank" rel="noopener">Sign out of Microsoft</a>
 </section>

@@ -120,6 +120,8 @@ Reaching into that state would mean matching the navigation to the portal domain
 
 **What the extension does offer for it** (F8, 2026-08-18): a sign-out link in the configuration UI, pointing at the ESTS logout endpoint. It enforces nothing — it hands the next sign-in back to the rule, in one click instead of through the portal's account menu. It needs no new permission, because `login.microsoftonline.com` is already covered and a plain link needs no API.
 
+Measured on 2026-08-18: it works. One portal is slower to let go — `make.powerautomate.com` holds its own application session past the ESTS logout and releases it only after a browser restart (`verification-matrix.md` Z8). That is a property of the portal, not of the rule, and it is named in the UI rather than worked around.
+
 Reported from real use on 2026-08-18, at `make.powerautomate.com` with a live session.
 
 ## 6. Escape hatch

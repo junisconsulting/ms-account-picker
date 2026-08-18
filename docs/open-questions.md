@@ -18,7 +18,7 @@ It costs **no new permission**: `login.microsoftonline.com` is already in `host_
 
 **Not decided this way:** enforcing the mode on every portal visit. That would mean matching the navigation to the portal domain itself, and therefore `host_permissions` on the portal domains — the project's stop criterion (`security-review.md` §4). It would also sign the user out repeatedly, which is a different product from an account picker. If the need ever becomes concrete, it is a new risk assessment, not a bugfix (A4).
 
-**Open within this decision:** whether the ESTS logout reliably tears down a portal's own application session, or only the ESTS session. If it only clears ESTS, the button helps less than it promises — the portal would keep serving its cached token until it expires. → `verification-matrix.md` Z8.
+**Measured 2026-08-18, and it holds:** the ESTS logout does hand the next sign-in back to the rule. One portal behaves differently — `make.powerautomate.com` keeps its own application session past the logout and releases it only after a browser restart. Accepted as-is by the client; sign out, restart, and the configured mode applies there too. The UI names it, because a user who clicks sign-out and sees no change would otherwise conclude the extension is broken. → `verification-matrix.md` Z8.
 
 ### F3 — Configuration source → manual entry in the extension UI *(2026-08-17)*
 
