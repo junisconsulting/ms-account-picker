@@ -8,6 +8,20 @@
 
 ## Decided
 
+### F9 — Version control on the store route → auto-update accepted *(2026-08-18)*
+
+The project carried a rule "pinned version in the deployment policy, never auto-update" and a `deployment.md` policy skeleton using a key called `pinned_version`. **That key does not exist** — verified against the Edge and Chrome `ExtensionSettings` schemas. The rule was unenforceable and had been for as long as it stood.
+
+**Decision: accept auto-update.** Self-hosting the update manifest would restore control through `override_update_url`, at the cost of an update endpoint, key custody, and a second extension ID. That price is not worth paying for a rule set this small.
+
+Binding consequences, so this is not rediscovered:
+
+- Every policy entry carries `minimum_version_required` — a floor against a forced downgrade, which is the only direction a policy can control.
+- Rollback is `installation_mode: blocked`. Never a previous version; the store does not serve one.
+- Do not propose `pinned_version`. It does not exist.
+
+The residual risk is named in `security-review.md` §7: a compromised store account or pipeline reaches every profile at Google's timing, and no customer-side policy delays it. The controls that remain — blocking review on every rule change, zero dependencies, artefact hash per upload — are what make such a version *detectable*, now that it cannot be *prevented*.
+
 ### F8 — Live portal session → a sign-out action, not enforcement *(2026-08-18)*
 
 Observed at `make.powerautomate.com`: once signed in, opening the portal in a new tab lands in the application directly. Neither picker nor direct sign-in takes effect, because no authorize request is made at all (`architecture.md` §5.1).

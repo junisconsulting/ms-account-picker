@@ -20,24 +20,22 @@ This reverses the project's original decision. The reasoning, and what the rever
 
 Steps 1–4 are enough for the customer to allowlist and test. Publication is not a prerequisite for the ID, and an item can stay unlisted while testing runs.
 
-### 1.2 🔴 Version pinning is not available — open decision
+### 1.2 Version pinning is not available — decided, accepted
 
-`CLAUDE.md` security rule 4 says: *pinned version in the deployment policy, never auto-update.* **That rule cannot be satisfied for a store-hosted extension.**
-
-Verified against both vendors' policy schemas (2026-08-18): `ExtensionSettings` has no `pinned_version` field. Earlier revisions of this document used that key; it does not exist and never did. What exists is:
+Verified against both vendors' policy schemas on 2026-08-18: **`ExtensionSettings` has no `pinned_version` field.** Earlier revisions of this document used that key. It does not exist and never did, in neither the Edge nor the Chrome schema. What exists is:
 
 | Field | What it actually does |
 | --- | --- |
-| `minimum_version_required` | Disables the extension if its version is **older** than the value. A floor, not a ceiling — it blocks downgrades, it cannot prevent an update |
-| `override_update_url` + `update_url` | Fetches the extension and its updates from a URL you control. This is the only mechanism that yields real version control, and it requires self-hosting the update manifest |
+| `minimum_version_required` | Disables the extension if its version is **older** than the value. A floor against downgrades, not a ceiling — it cannot prevent an update |
+| `override_update_url` + `update_url` | Fetches the extension and its updates from a URL you control. The only mechanism that yields real version control, and it requires self-hosting the update manifest |
 
-So a store-hosted extension auto-updates, and no policy prevents it. Three ways forward, none of them free:
+**Decision (2026-08-18): auto-update is accepted.** A store-hosted extension updates when Google releases it, and no policy prevents that. Self-hosting the update manifest would restore control at the cost of an update endpoint, key custody and a second extension ID — a price this project does not pay for a rule set this small.
 
-1. **Accept auto-update.** Set `minimum_version_required` as a floor against downgrade attacks and accept that Google controls when a new version reaches the fleet. Security rule 4 is then rewritten to say what is actually enforceable.
-2. **Store for the ID and the review, self-hosting for the delivery.** Keeps real pinning through `override_update_url`. Costs an update endpoint and key custody, and the self-hosted build carries a **different extension ID** than the store item unless the signing key is controlled from the first upload.
-3. **Publish only unlisted, deliver by policy.** Reduces exposure but does not change the update mechanism — it is cosmetic against this problem.
+What follows is binding, not advisory:
 
-**Not decided.** Rule 4 is a security rule; it does not get rewritten to fit a constraint without an explicit decision.
+- The policy always carries **`minimum_version_required`**. It cannot stop an update, but it stops an *old* version being forced back onto a profile, which is the direction an attacker would want.
+- **Rollback is `installation_mode: blocked`, never a previous version.** The store serves the current version only. A bad release is answered by switching the extension off across the fleet, and the recovery path from there is a fixed version going forward. The customer has to know this before the rollout, not during an incident.
+- `CLAUDE.md` security rule 4 states this. `pinned_version` is not to be proposed again.
 
 ### 1.3 Edge installing a Chrome Web Store item
 
@@ -113,13 +111,15 @@ Proposal, to be agreed:
 2. **Ring 1** — a small pilot group, by policy against the unlisted store item. Wait at least one sign-in-frequency period of the admin session baseline.
 3. **Ring 2** — everyone in scope.
 
-Before every ring change: verification matrix green, security review recorded, artefact hash registered.
+The matrix is **filled during Rings 0 and 1**, not before them — most of its cells need portals, accounts and sign-in logs that only the customer's environment has (`verification-matrix.md` §2). The gate is therefore: before **Ring 2**, the matrix complete and green. Before every ring change: security review recorded, artefact hash registered, and no open abort criterion from the previous ring.
 
 ## 5. Rollback
 
 The user-level escape hatch (F2) does not replace a fleet-level rollback path.
 
-Rollback is `installation_mode: blocked` or `removed`. Note what §1.2 implies: **rolling back to a previous version is not available on the store route** — `minimum_version_required` can only forbid older versions, and the store serves only the current one. The rollback path is therefore "off", not "back".
+Rollback is `installation_mode: blocked` or `removed`. Per §1.2 that is the **only** rollback: the store serves the current version, and `minimum_version_required` can only forbid older ones. The path is "off", not "back" — accepted 2026-08-18.
+
+For an extension in an authentication path, "off" is a complete recovery: with no rule registered the profile behaves exactly as it did before installation (constraint A3, proven by Z2's mechanism in the e2e). Nothing is left half-applied.
 
 Both take effect at the next policy refresh. The time until then is the actual recovery time and has to be known.
 

@@ -15,7 +15,7 @@ That makes the extension's own build and delivery chain a T0 asset. It must not 
 3. No background script beyond the rule sync, no `fetch`, no remote code, no telemetry
 4. A review is mandatory for **every** change to rules or permissions
 5. Reproducible build; artefact hash documented (`deployment.md`)
-6. Controlled version in the deployment policy — **under revision**, see §7: version pinning is not available on the store route
+6. `minimum_version_required` in the deployment policy as a downgrade floor. Version pinning is **not available** and auto-update is accepted — §7
 
 ## 3. Attack surfaces and countermeasures
 
@@ -23,7 +23,7 @@ That makes the extension's own build and delivery chain a T0 asset. It must not 
 | --- | --- | --- |
 | Rule `action` | Rewritten to `redirect_uri` → the auth code lands with an attacker | Security-review skill §2: only `prompt`/`login_hint` in `addOrReplaceParams`, target host == request host |
 | `host_permissions` | Widened to portal domains → access to session-bearing requests | Widen only after asking; see the stop criterion |
-| Update channel | A substituted version pushed to all admin profiles | Google signs the package and controls the release moment. Version pinning is **not** available — the residual risk and the open decision are in §7 |
+| Update channel | A substituted version pushed to all admin profiles | Google signs the package and controls the release moment. Version pinning is not available; accepted, with `minimum_version_required` as a downgrade floor and `installation_mode: blocked` as the rollback — §7 |
 | Service worker | Loading code at runtime, exfiltrating the UPN | No `fetch`/`eval`/`chrome.scripting`; MV3 CSP; review checklist §3 |
 | Dependencies | Supply-chain compromise | Zero runtime dependencies. Adding one is an explicit decision by the client |
 | Repository | A signing key or real identifiers in the clear | `.gitignore` for `*.pem`/`*.crx`; no real UPNs or tenant IDs in code, tests, docs or commits |
@@ -67,12 +67,14 @@ The project began with the opposite decision — self-hosted CRX, internal infra
 
 **The moment of delivery belongs to Google.** A published update reaches profiles when Google's pipeline releases it, not when we say so. There is no supported way to hold it back — see the next point.
 
-**🔴 Version pinning is not achievable, and security rule 4 currently claims it is.** Verified against the Edge and Chrome `ExtensionSettings` schemas on 2026-08-18: the field earlier revisions of `deployment.md` named, `pinned_version`, does not exist. `minimum_version_required` is a floor that blocks downgrades; it cannot stop an update. Real version control requires `override_update_url` pointing at an update manifest we host, which is the route the store replaced.
+**Version pinning is not achievable. Accepted 2026-08-18.** Verified against the Edge and Chrome `ExtensionSettings` schemas: the field earlier revisions of `deployment.md` named, `pinned_version`, does not exist. `minimum_version_required` is a floor that blocks downgrades; it cannot stop an update. Real version control would require `override_update_url` pointing at an update manifest we host — the route the store replaced.
 
-Consequences that follow and are not yet decided (`deployment.md` §1.2):
+The residual risk, stated so it is not rediscovered later: **a compromise of the junis store account, or of Google's pipeline, reaches every profile at Google's timing and nothing in the customer's policy delays it.** That is the price of the store route, and it is the reason the *other* controls stay strict — the blocking review before every rule or permission change, zero dependencies, and an artefact hash per upload. They are what makes an unwanted version detectable, since it can no longer be prevented.
 
-- Rule 4 says "never suggest auto-update". On the store route, auto-update is not a suggestion but the mechanism. Either the rule is rewritten to what is enforceable, or the delivery route changes back.
-- **Rollback is "off", not "back".** The store serves the current version only, so a bad release is answered with `installation_mode: blocked`, not with a previous version. For an extension in an authentication path that is a materially different recovery story, and the customer has to know it before the rollout, not during an incident.
+Two mitigations, both binding (`deployment.md` §1.2):
+
+- **`minimum_version_required` in every policy entry.** It cannot stop an update, but it stops an old version being forced back onto a profile — the direction an attacker would want.
+- **Rollback is `installation_mode: blocked`, never a previous version.** That is a complete recovery here, not a partial one: with no rule registered the profile behaves exactly as before installation (constraint A3). Nothing is left half-applied. The customer has to know this before the rollout, not during an incident.
 
 **The signing key leaves our custody.** Google signs the CRX. That removes a key we would otherwise have to protect at T0 level — genuinely a reduction in attack surface — and it removes the customer's ability to verify a junis signature. What remains verifiable is the uploaded ZIP against the hash in `deployment.md` §3.1.
 

@@ -146,8 +146,7 @@ Screenshot suggestions, in the order that explains the product: the popup in its
 
 ## Before submitting
 
-- [ ] Verification matrix complete (`verification-matrix.md`) — the listing claims behaviour that has not been measured across portals yet
+- [ ] Verification matrix filled far enough that the listing does not claim unobserved behaviour (`verification-matrix.md` §2 — completeness is the Ring 2 gate, not the submission gate)
 - [ ] Version decided and bumped; the artefact hash registered in `deployment.md` §3.1
 - [ ] `minimum_chrome_version` (currently `120`) checked against the Edge version of the target fleet — carried as a LOW finding since the first review
-- [ ] 🟡 The version-pinning decision from `deployment.md` §1.2 taken — it changes what the customer's policy can promise
 - [ ] Summary text identical to `description` in `src/manifest.json`

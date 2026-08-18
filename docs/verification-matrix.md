@@ -62,6 +62,8 @@ Frozen as a regression test in `tests/unit/rules.test.js` ("the site condition w
 
 ## 2. Matrix: portals × states
 
+**This table is filled during Rings 0 and 1, not before them.** Most cells need portals, accounts and Entra sign-in logs that only the customer's environment has. The gate is before **Ring 2**: complete and green (`deployment.md` §4). Until then an empty cell means unobserved, not passed.
+
 Three questions per combination:
 
 - **A** — does the sign-in land on the admin account?
@@ -86,10 +88,12 @@ One entry per cell: `A✓ B✓ C✓`, or the concrete deviation. No `n/a` withou
 
 ## 3. Non-negotiable additional checks
 
+⏭️ marks a check that cannot be run in this project's environment and is carried into the customer pilot instead. Non-negotiable still applies: each one has an abort criterion, and a triggered criterion stops the rollout. What changed is *who* observes it, not whether it matters.
+
 | # | Check | Expectation |
 | --- | --- | --- |
-| Z1 🔴 | **Silent token renewal** — leave any M365 portal open, let the token lifetime elapse | No re-auth prompt, no `interaction_required` in the console. If that breaks, constraint A1 is violated |
-| Z2 🔴 | **Workforce-profile regression** — the same extension, in a profile where it was **never activated** | No change in behaviour whatsoever. `getDynamicRules()` returns `[]` |
+| Z1 ⏭️ | **Silent token renewal** — leave any M365 portal open, let the token lifetime elapse | **Handed to the customer pilot (2026-08-18).** It needs real portals and real sessions, which this project's environment does not have. The e2e proves the *mechanism* — a rule does not match inside an iframe — but not that renewal as a whole survives in production. **Ring 1 abort criterion:** any re-auth prompt that did not occur before, or `interaction_required` in a portal console, stops the rollout, sets `installation_mode: blocked`, and reopens A1 |
+| Z2 ⏭️ | **Workforce-profile regression** — the same extension, in a profile where it was **never activated** | **Handed to the customer pilot (2026-08-18).** The mechanism is proven automatically — a fresh profile registers no rule, and `storage.local.clear()` removes every rule again (A3, in the e2e). What the pilot adds is the same statement on a real machine under policy force-install. **Ring 1 abort criterion:** any behaviour change whatsoever in a non-activated profile stops the rollout — the whole deployment model rests on this |
 | ~~Z3~~ ✅ | **Redirect loop** | **Confirmed 2026-08-17 by the e2e:** Chromium skips a redirect that would produce an identical URL. Manually only as a spot check against a real portal |
 | Z4 | **Foreign tenant** — in the picker default | Reachable through the account chooser, with no further action |
 | Z4b | **Foreign tenant** — in the `login_hint` opt-in | Reachable only through the toggle in the configuration UI; after switching back on, the rule applies again immediately |
