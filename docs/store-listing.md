@@ -12,6 +12,11 @@ Anything marked 🟡 needs an input that is not in this repository.
 | Category | Workflow & Planning |
 | Language | English |
 | Visibility for testing | **Unlisted** until the verification matrix is complete (`deployment.md` §1.1) |
+| Item ID | `bapkfcamfgmaoaedkdljdmgpedpffjen` |
+| Homepage URL | `https://junis.de` |
+| Support URL | the repository's issues page once it is public; `https://junis.de` until then |
+| Official URL | left as *None* — the field needs the domain verified in Google Search Console |
+| Mature content | off |
 
 ## Summary — the short description
 
@@ -131,6 +136,10 @@ This is the sign-in endpoint whose authorize request the extension modifies, and
 | Certification: not sold to third parties | Yes |
 | Certification: not used for purposes unrelated to the single purpose | Yes |
 | Certification: not used to determine creditworthiness | Yes |
+
+**The description links to the repository, so the repository has to be public before the item is submitted.** A reviewer who clicks a 404 is a review round lost, and the same URL is in the extension's own footer.
+
+**Screenshots and promo tiles must not carry an alpha channel** — the dashboard states *JPEG or 24-bit PNG (no alpha)* on those fields. The three shipped screenshots are 24-bit RGB on the junis navy for that reason. It also settles the earlier trade: transparency was never an option here, so captions beside the popup are, should the empty canvas ever be worth filling.
 
 **Worth stating in the listing rather than only here:** in direct sign-in mode the configured account name is written into the sign-in URL. That is what makes the mode work, and it means the address appears in browser history and in any proxy log on the path — the same address Microsoft's own sign-in logs already record. It is documented in `security-review.md` §5 and named in the extension's own UI.
 
