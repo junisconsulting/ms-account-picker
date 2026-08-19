@@ -9,7 +9,7 @@ Anything marked 🟡 needs an input that is not in this repository.
 | Field | Value |
 | --- | --- |
 | Name | `MS Account Picker` |
-| Category | Workflow & Planning |
+| Category | **Tools** — the general utility bucket. *Workflow & Planning* reads as task and project planning, which this is not; *Privacy & Security* would oversell it, since the extension selects an account rather than protecting anything, and it invites comparison with password managers. The category is changeable at any time and is inert while the item is unlisted |
 | Language | English |
 | Visibility for testing | **Unlisted** until the verification matrix is complete (`deployment.md` §1.1) |
 | Item ID | `bapkfcamfgmaoaedkdljdmgpedpffjen` |
@@ -151,11 +151,14 @@ This is the sign-in endpoint whose authorize request the extension modifies, and
 | --- | --- | --- |
 | Store icon | 128×128 PNG | ✅ `src/icons/icon-128.png` |
 | Screenshots | 1280×800 or 640×400, at least one, at most five | ✅ three, from 0.11.0: `01-default`, `02-direct`, `03-listed` under `assets/store/` |
-| Small promo tile | 440×280 PNG, optional | 🟡 optional, not planned |
+| Small promo tile | 440×280, optional | ❌ not planned — see below |
+| Marquee promo tile | 1400×560, optional | ❌ not planned — see below |
 
 The three shipped screenshots are captures of the real popup, composed onto a 1280×800 **white** canvas. No border: the dark popup carries its own edge against white. They show the default state, direct sign-in, and *only the sites I list* with the site list open — one per mode the description names.
 
 All three share one scale factor, so the UI does not change size as a viewer swipes through them. The tallest capture sets that factor, which is why the two shorter ones sit in empty canvas: a popup is narrow and tall, and no scale makes that aspect fill a 1280×800 frame. Filling the frame would mean captions beside the popup, and caption text needs a known background — so it is transparency **or** captions, not both. The account in them is a fictional person at the vendor's own domain, not a customer's.
+
+**Neither promo tile is worth making.** They exist for the store's discovery surfaces: the small tile for category listings and curated collections, the marquee for a banner Google places only on editorially featured items. This item is unlisted, so it appears in no such surface at all — and even published, its audience never browses for it. The extension arrives by `ExtensionSettings` force-install; an admin follows a link from onboarding, lands on the item page, and sees the icon and the screenshots. The tiles are never rendered on that page.
 
 Regenerate after a version bump: the version pill in the header is part of the image, so a screenshot taken from an older build advertises a version the store does not serve.
 
