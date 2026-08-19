@@ -139,7 +139,7 @@ This is the sign-in endpoint whose authorize request the extension modifies, and
 
 **The description links to the repository, so the repository has to be public before the item is submitted.** A reviewer who clicks a 404 is a review round lost, and the same URL is in the extension's own footer.
 
-**Screenshots and promo tiles must not carry an alpha channel** — the dashboard states *JPEG or 24-bit PNG (no alpha)* on those fields. The three shipped screenshots are 24-bit RGB on the junis navy for that reason. It also settles the earlier trade: transparency was never an option here, so captions beside the popup are, should the empty canvas ever be worth filling.
+**Screenshots and promo tiles must not carry an alpha channel** — the dashboard states *JPEG or 24-bit PNG (no alpha)* on those fields. The three shipped screenshots are 24-bit RGB for that reason. It also settles the earlier trade: transparency was never an option here, so captions beside the popup are, should the empty canvas ever be worth filling.
 
 **Worth stating in the listing rather than only here:** in direct sign-in mode the configured account name is written into the sign-in URL. That is what makes the mode work, and it means the address appears in browser history and in any proxy log on the path — the same address Microsoft's own sign-in logs already record. It is documented in `security-review.md` §5 and named in the extension's own UI.
 
@@ -153,7 +153,7 @@ This is the sign-in endpoint whose authorize request the extension modifies, and
 | Screenshots | 1280×800 or 640×400, at least one, at most five | ✅ three, from 0.11.0: `01-default`, `02-direct`, `03-listed` under `assets/store/` |
 | Small promo tile | 440×280 PNG, optional | 🟡 optional, not planned |
 
-The three shipped screenshots are captures of the real popup, composed onto a 1280×800 canvas with a **transparent** ground — the popup is opaque, so it reads as a card whether the store flattens onto white or onto grey (checked both). They show the default state, direct sign-in, and *only the sites I list* with the site list open — one per mode the description names.
+The three shipped screenshots are captures of the real popup, composed onto a 1280×800 **white** canvas. No border: the dark popup carries its own edge against white. They show the default state, direct sign-in, and *only the sites I list* with the site list open — one per mode the description names.
 
 All three share one scale factor, so the UI does not change size as a viewer swipes through them. The tallest capture sets that factor, which is why the two shorter ones sit in empty canvas: a popup is narrow and tall, and no scale makes that aspect fill a 1280×800 frame. Filling the frame would mean captions beside the popup, and caption text needs a known background — so it is transparency **or** captions, not both. The account in them is a fictional person at the vendor's own domain, not a customer's.
 
