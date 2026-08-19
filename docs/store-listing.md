@@ -141,7 +141,7 @@ This is the sign-in endpoint whose authorize request the extension modifies, and
 | Asset | Requirement | State |
 | --- | --- | --- |
 | Store icon | 128×128 PNG | ✅ `src/icons/icon-128.png` |
-| Screenshots | 1280×800 or 640×400, at least one, at most five | ✅ `assets/store/01-default.png`, `assets/store/02-listed.png` |
+| Screenshots | 1280×800 or 640×400, at least one, at most five | ✅ `assets/store/01-default.png`, `assets/store/02-direct.png` — taken from 0.11.0 |
 | Small promo tile | 440×280 PNG, optional | 🟡 optional, not planned |
 
 The two shipped screenshots are captures of the real popup, composed onto a 1280×800 canvas with a **transparent** ground — the popup is opaque, so it reads as a card whether the store flattens onto white or onto grey (checked both). They show the default state and the *only the sites I list* mode with its account field. The account in them is a fictional person at the vendor's own domain, not a customer's.
@@ -154,5 +154,5 @@ Screenshot suggestions, in the order that explains the product: the popup in its
 
 - [ ] Verification matrix filled far enough that the listing does not claim unobserved behaviour (`verification-matrix.md` §2 — completeness is the Ring 2 gate, not the submission gate)
 - [ ] Version decided and bumped; the artefact hash registered in `deployment.md` §3.1
-- [ ] `minimum_chrome_version` (currently `120`) checked against the Edge version of the target fleet — carried as a LOW finding since the first review
+- [x] `minimum_chrome_version` (`120`) checked against the target fleet — Edge 151, so nothing is excluded. Decided and reasoned in `deployment.md` §2.1
 - [ ] Summary text identical to `description` in `src/manifest.json`

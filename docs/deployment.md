@@ -1,6 +1,6 @@
 # Deployment
 
-> Status: procedure settled, not yet carried out. Concrete values (extension ID, hashes, Edge version) are placeholders until the first upload.
+> Status: procedure settled. The extension ID and the artefact hashes are real; the store item exists. The rollout rings and the policy delivery path are still open.
 
 ## 1. Delivery route: Chrome Web Store, publicly listed
 
@@ -48,14 +48,16 @@ If neither holds, the fallback is a second listing in the Edge Add-ons store —
 
 ## 2. Distribution
 
+**Item identity.** Extension ID `acjamloohmblkhkhlcopgpcfknbanmgh`, assigned by the Chrome Web Store on the first upload (2026-08-19). It is stable for the life of the item and is what the policy below keys on — a second listing, for instance in the Edge Add-ons store, would produce a different one (§1.3).
+
 Through the Edge policy `ExtensionSettings`, browser-wide:
 
 ```json
 {
-  "<extension-id>": {
+  "acjamloohmblkhkhlcopgpcfknbanmgh": {
     "installation_mode": "force_installed",
     "update_url": "https://clients2.google.com/service/update2/crx",
-    "minimum_version_required": "<x.y.z>"
+    "minimum_version_required": "0.11.0"
   }
 }
 ```
@@ -66,8 +68,17 @@ The force-install happens **browser-wide**; the functional separation comes from
 
 `ExtensionSettings` is the **only** policy in the project. The extension's own configuration (activation, mode, account, per-site exceptions) is deliberately not distributed by policy but set per profile in the extension UI (`open-questions.md` F3). Each admin therefore has a one-time setup step — that belongs in onboarding, not in deployment.
 
-<!-- TODO: record the extension ID after the first upload; add the policy delivery path
-     (GPO or Intune) once the customer has chosen it. -->
+### 2.1 `minimum_chrome_version` — why it stays at 120 (decided 2026-08-19)
+
+The manifest declares `120`. A browser below that refuses to install the extension, so the field only ever **excludes**. Three inputs settled the value:
+
+- **The target fleet runs Edge 151.** `120` is far below it, so no realistically managed device is excluded.
+- **The oldest platform feature the code needs is newer than nothing.** The shipped CSS uses unprefixed `image-set()` for the header mark and `accent-color` on the form controls. Going much below `113` would start breaking rendering rather than merely being generous. *(Those per-feature minimums are from memory, not measured — the decision has margin on both sides, so the precision is not load-bearing.)*
+- **The failure directions are not symmetric.** Set too high, a device silently does not receive the extension — visible, because the extension is missing. Set too low, it installs on a browser where something may not work, and this project's dominant failure mode is exactly that: a rule that never registers looks identical to "nothing happened", and the admin is signed in with the wrong account with no signal anywhere.
+
+**Honest limit:** the extension has been exercised on exactly one engine, Chrome for Testing 152, plus whatever the manual matrix runs on. Every value of this field is therefore a claim beyond what has been tested — including `120`. Raising it to the tested version would exclude the fleet it is built for, which is why the field is set for reach and the matrix, not the manifest, carries the evidence.
+
+<!-- TODO: add the policy delivery path (GPO or Intune) once the customer has chosen it. -->
 
 ## 3. Build and signing
 
