@@ -14,7 +14,7 @@ Anything marked 🟡 needs an input that is not in this repository.
 | Visibility for testing | **Unlisted** until the verification matrix is complete (`deployment.md` §1.1) |
 | Item ID | `bapkfcamfgmaoaedkdljdmgpedpffjen` |
 | Homepage URL | `https://junis.de` |
-| Support URL | the repository's issues page once it is public; `https://junis.de` until then |
+| Support URL | `https://github.com/junisconsulting/ms-account-picker/issues` |
 | Official URL | left as *None* — the field needs the domain verified in Google Search Console |
 | Mature content | off |
 
@@ -137,7 +137,7 @@ This is the sign-in endpoint whose authorize request the extension modifies, and
 | Certification: not used for purposes unrelated to the single purpose | Yes |
 | Certification: not used to determine creditworthiness | Yes |
 
-**The description links to the repository, so the repository has to be public before the item is submitted.** A reviewer who clicks a 404 is a review round lost, and the same URL is in the extension's own footer.
+**The repository is public (2026-08-19)**, so the link the description carries — the same one in the extension's own footer — resolves for a reviewer. GitHub private vulnerability reporting is enabled on it, which is the channel `SECURITY.md` names.
 
 **Screenshots and promo tiles must not carry an alpha channel** — the dashboard states *JPEG or 24-bit PNG (no alpha)* on those fields. The three shipped screenshots are 24-bit RGB for that reason. It also settles the earlier trade: transparency was never an option here, so captions beside the popup are, should the empty canvas ever be worth filling.
 
