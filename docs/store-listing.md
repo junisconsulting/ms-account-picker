@@ -125,6 +125,8 @@ This is the sign-in endpoint whose authorize request the extension modifies, and
 
 ## Privacy practices
 
+**Remote code: No.** The dashboard asks *Are you using remote code?* and the form does not default to the right answer — check it before submitting. The extension packages every line it runs: no `fetch`, no `eval`, no `new Function`, no `importScripts`, no script tag pointing at another origin, no CSP relaxation. Verified against the packaged ZIP, not against the working tree. Answering *Yes* would be false and would pull the submission into a review track it does not belong in.
+
 | Question | Answer |
 | --- | --- |
 | Does it collect personally identifiable information? | **No.** The account name is typed by the user and stored in `chrome.storage.local` on their own device. It is never transmitted to us or to anyone else |
