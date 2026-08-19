@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "MS Account Picker",
-  "version": "0.11.0",
+  "version": "0.11.1",
   "description": "Choose which Microsoft account you sign in with, per site, instead of being signed in automatically.",
   "minimum_chrome_version": "120",
   "permissions": [

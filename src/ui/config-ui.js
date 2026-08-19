@@ -101,7 +101,7 @@ const TEMPLATE = `
       <select id="site-mode">
         <option value="picker">Account picker</option>
         <option value="hint">Direct sign-in</option>
-        <option value="off">Leave alone</option>
+        <option value="off">Browser default</option>
       </select>
       <button type="button" id="site-add">Add</button>
     </div>
@@ -137,7 +137,7 @@ const TEMPLATE = `
     <select class="mode">
       <option value="picker">Account picker</option>
       <option value="hint">Direct sign-in</option>
-      <option value="off">Leave alone</option>
+      <option value="off">Browser default</option>
     </select>
     <button type="button" class="rm" title="Remove">&times;</button>
   </li>

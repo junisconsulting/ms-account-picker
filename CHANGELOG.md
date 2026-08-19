@@ -14,6 +14,19 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Nothing yet.
 
+## [0.11.1] — 2026-08-19
+
+**Rules and permissions:** no change. The manifest is touched on the version line
+alone, and the rule builder and service worker are byte-identical to 0.11.0.
+
+### Changed
+
+- In the per-site list, the option that switches the extension off for one site is
+  called **Browser default** instead of *Leave alone*. The old label never said who
+  was leaving what alone; the new one names what actually happens — the browser
+  signs in the way it would without this extension. Stored values are unchanged, so
+  existing configurations need no attention.
+
 ## [0.11.0] — 2026-08-19
 
 **Rules and permissions:** `permissions` and `host_permissions` are unchanged —
