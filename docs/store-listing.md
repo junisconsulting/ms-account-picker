@@ -141,10 +141,12 @@ This is the sign-in endpoint whose authorize request the extension modifies, and
 | Asset | Requirement | State |
 | --- | --- | --- |
 | Store icon | 128×128 PNG | ✅ `src/icons/icon-128.png` |
-| Screenshots | 1280×800 or 640×400, at least one, at most five | ✅ `assets/store/01-default.png`, `assets/store/02-direct.png` — taken from 0.11.0 |
+| Screenshots | 1280×800 or 640×400, at least one, at most five | ✅ three, from 0.11.0: `01-default`, `02-direct`, `03-listed` under `assets/store/` |
 | Small promo tile | 440×280 PNG, optional | 🟡 optional, not planned |
 
-The two shipped screenshots are captures of the real popup, composed onto a 1280×800 canvas with a **transparent** ground — the popup is opaque, so it reads as a card whether the store flattens onto white or onto grey (checked both). They show the default state and the *only the sites I list* mode with its account field. The account in them is a fictional person at the vendor's own domain, not a customer's.
+The three shipped screenshots are captures of the real popup, composed onto a 1280×800 canvas with a **transparent** ground — the popup is opaque, so it reads as a card whether the store flattens onto white or onto grey (checked both). They show the default state, direct sign-in, and *only the sites I list* with the site list open — one per mode the description names.
+
+All three share one scale factor, so the UI does not change size as a viewer swipes through them. The tallest capture sets that factor, which is why the two shorter ones sit in empty canvas: a popup is narrow and tall, and no scale makes that aspect fill a 1280×800 frame. Filling the frame would mean captions beside the popup, and caption text needs a known background — so it is transparency **or** captions, not both. The account in them is a fictional person at the vendor's own domain, not a customer's.
 
 Regenerate after a version bump: the version pill in the header is part of the image, so a screenshot taken from an older build advertises a version the store does not serve.
 
