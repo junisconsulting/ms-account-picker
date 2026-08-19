@@ -1,6 +1,6 @@
 # Deployment
 
-> Status: procedure settled. The extension ID and the artefact hashes are real; the store item exists. The rollout rings and the policy delivery path are still open.
+> Status: procedure settled. The artefact hashes are real. The store item does not exist yet, so the extension ID, the rollout rings and the policy delivery path are still open.
 
 ## 1. Delivery route: Chrome Web Store, publicly listed
 
@@ -48,13 +48,15 @@ If neither holds, the fallback is a second listing in the Edge Add-ons store —
 
 ## 2. Distribution
 
-**Item identity.** Extension ID `acjamloohmblkhkhlcopgpcfknbanmgh`, assigned by the Chrome Web Store on the first upload (2026-08-19). It is stable for the life of the item and is what the policy below keys on — a second listing, for instance in the Edge Add-ons store, would produce a different one (§1.3).
+**Item identity.** The extension ID is still open. It is assigned by the Chrome Web Store when the item is created and is stable for the life of that item; a second listing, for instance in the Edge Add-ons store, produces a different one (§1.3).
+
+**An ID from *Load unpacked* is not this ID.** Chromium derives that one from the absolute path of the unpacked directory, so it differs per machine and per checkout, and it never matches what the store assigns. Take the ID from the dashboard — it is in the URL of the item page and on the item's overview — not from `edge://extensions` on a development machine. A policy keyed on the wrong ID force-installs nothing and reports no error.
 
 Through the Edge policy `ExtensionSettings`, browser-wide:
 
 ```json
 {
-  "acjamloohmblkhkhlcopgpcfknbanmgh": {
+  "<extension-id>": {
     "installation_mode": "force_installed",
     "update_url": "https://clients2.google.com/service/update2/crx",
     "minimum_version_required": "0.11.0"
@@ -106,7 +108,7 @@ Demonstrated on 2026-08-18: two packs byte-identical, and identical again after 
 
 | Version | Date | SHA-256 of the ZIP | Store item state | Approved by |
 | --- | --- | --- | --- | --- |
-| 0.11.0 | 2026-08-19 | `67234c46219da7f86efca953b2b40436d7241f04be7551a177a8a7fe8a947b4d` | uploaded, unlisted | Claude + D. H. |
+| 0.11.0 | 2026-08-19 | `67234c46219da7f86efca953b2b40436d7241f04be7551a177a8a7fe8a947b4d` | packaged, not uploaded | Claude + D. H. |
 | 0.10.0 | 2026-08-18 | `2615f8061ae40c758e1e8a18f11a68e0ee0d5901bb055cfc41f79248d5dd3bc6` | packaged, not uploaded | Claude + D. H. |
 | 0.9.0 | 2026-08-18 | `cfa69712a45708f6f0cc0fb3d0cd200281eee9847cdfb937f24d16b0386b4e69` | packaged, not uploaded | Claude + D. H. |
 
