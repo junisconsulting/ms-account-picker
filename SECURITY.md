@@ -17,7 +17,9 @@ Useful in a report:
 - what an attacker gains — the impact matters more than the mechanism
 - a reproduction, or the authorize URL shape that triggers the behaviour, with tenant IDs, `state`, `nonce` and real UPNs removed
 
-We aim to acknowledge a report within five working days and to state whether we consider it in scope, along with the intended fix.
+We answer as soon as we can and will say whether we consider the report in scope, along with the intended fix. There is deliberately no promised turnaround here: this project has no on-call rotation, and a response time we cannot always keep would be worth less than none.
+
+If a report goes unanswered and you judge the issue to be actively exploitable, treat silence as your cue to escalate on your own terms rather than as a reason to wait.
 
 ## What is in scope
 
