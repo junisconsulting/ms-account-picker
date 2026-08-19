@@ -12,24 +12,17 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-**Rules and permissions:** no change. `permissions`, `host_permissions` and the rule
-builder are byte-identical. The manifest is touched on exactly one line: `options_ui.page`
-now names the popup document instead of a second, identical one.
+Nothing yet.
 
-### Changed
+## [0.11.0] — 2026-08-19
 
-- The options page and the action popup are the same document. `action.default_popup`
-  and `options_ui.page` both name `popup/popup.html`, which renders the UI it always
-  rendered — the second shell was a byte-identical copy that could only ever drift.
-- The header mark follows the operating system's colour scheme through a CSS media
-  query instead of a `matchMedia` listener. Same behaviour, a theme change while the
-  popup is open included.
-
-### Removed
-
-- `src/options/` — see above.
-- The 25 committed logo renders under `assets/logo/preview/` and the four rejected
-  logo drafts. The chosen mark stays, as `assets/logo/mark.svg` and `mark-dark.svg`.
+**Rules and permissions:** `permissions` and `host_permissions` are unchanged —
+still `declarativeNetRequest`, `storage`, and `https://login.microsoftonline.com/*`
+alone. The **rule builder did change**: the new *only the sites I list* mode
+registers no global rule, so a profile using it has the extension touch strictly
+fewer requests than any previous version, never more. The manifest is touched on
+two lines: the version, and `options_ui.page`, which now names the popup document
+instead of a second, identical one.
 
 ### Added
 
@@ -57,6 +50,18 @@ now names the popup document instead of a second, identical one.
   mode over, typing the account, and switching back. There is one stored account
   name and every direct sign-in uses it; the field now says so and sits below the
   three modes rather than under one of them.
+- The options page and the action popup are the same document. `action.default_popup`
+  and `options_ui.page` both name `popup/popup.html`, which renders the UI it always
+  rendered — the second shell was a byte-identical copy that could only ever drift.
+- The header mark follows the operating system's colour scheme through a CSS media
+  query instead of a `matchMedia` listener. Same behaviour, a theme change while the
+  popup is open included.
+
+### Removed
+
+- `src/options/` — see above.
+- The 25 committed logo renders under `assets/logo/preview/` and the four rejected
+  logo drafts. The chosen mark stays, as `assets/logo/mark.svg` and `mark-dark.svg`.
 
 ### Fixed
 
