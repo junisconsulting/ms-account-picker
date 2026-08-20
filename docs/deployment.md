@@ -109,7 +109,7 @@ Demonstrated on 2026-08-18: two packs byte-identical, and identical again after 
 | Version | Date | SHA-256 of the ZIP | Store item state | Approved by |
 | --- | --- | --- | --- | --- |
 | 0.11.1 | 2026-08-19 | `0e58f6e12113b7b7921e22abb53da186100f345c2f9cddfe2b95bfda59267b69` | packaged, not uploaded | Claude + D. H. |
-| 0.11.0 | 2026-08-19 | `67234c46219da7f86efca953b2b40436d7241f04be7551a177a8a7fe8a947b4d` | uploaded, item in draft | Claude + D. H. |
+| 0.11.0 | 2026-08-19 | `67234c46219da7f86efca953b2b40436d7241f04be7551a177a8a7fe8a947b4d` | **published 2026-08-20** — the version the store serves | Claude + D. H. |
 | 0.10.0 | 2026-08-18 | `2615f8061ae40c758e1e8a18f11a68e0ee0d5901bb055cfc41f79248d5dd3bc6` | packaged, not uploaded | Claude + D. H. |
 | 0.9.0 | 2026-08-18 | `cfa69712a45708f6f0cc0fb3d0cd200281eee9847cdfb937f24d16b0386b4e69` | packaged, not uploaded | Claude + D. H. |
 
