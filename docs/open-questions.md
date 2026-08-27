@@ -4,7 +4,13 @@
 
 ## Open
 
-*(none at the moment — every question raised so far is decided)*
+### F10 — Keep direct sign-in now that V3 is answered?
+
+V3 carried a planned consequence: if `login_hint` does not override a foreign PRT, *"the `login_hint` mode is dropped with no replacement"*. On 2026-08-27 real use gave the answer (`architecture.md` §5.1, §7.1): the hint is honoured silently only while the named account's ESTS session is alive. After that session expires — sign-in frequency, session lifetime — the picker appears anyway, hint or no hint.
+
+What the mode is therefore worth: it saves the picker click **between** re-authentications, at the price the security review already names (the UPN in every authorize URL, §5) and with no foreign tenant reachable (F2). Whether that is worth keeping as an opt-in, or whether the picker should carry the concept alone as V3 foresaw, is a product decision.
+
+Done in the meantime, independent of the decision: the popup text and the README no longer promise more than the mode delivers.
 
 ## Decided
 

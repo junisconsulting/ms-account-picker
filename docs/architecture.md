@@ -39,7 +39,7 @@ There are exactly two parameters the extension will ever inject:
 | Mode | Injected parameter | Behaviour |
 | --- | --- | --- |
 | **Picker** | `prompt=select_account` | The account chooser always appears; the workforce account stays visible |
-| **Hint** | `login_hint=<UPN>` | Straight to the configured account; the workforce account never appears |
+| **Hint** | `login_hint=<UPN>` | Straight to the configured account while its session is alive; after it expires the picker appears once more (§5.1) |
 
 **The two are mutually exclusive.** Microsoft documents it in one sentence: *"You can't use both `login_hint` and `select_account`."* ([OIDC protocol reference](https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc), `prompt` parameter). "Picker, but with the account preselected" is therefore not an unexplored third mode — it is documented as unsupported.
 
@@ -149,6 +149,10 @@ One portal is slower to let go — `make.powerautomate.com` holds its own applic
 
 Reported from real use on 2026-08-18, at `make.powerautomate.com` with a live session.
 
+**And when that session ends, direct sign-in is a hint again.** `login_hint` is honoured silently only while ESTS holds a live session for the named account. Once that session has expired — the sign-in frequency or the session lifetime of the admin baseline has elapsed — the next interactive authorize request still carries the hint, but ESTS has nothing to satisfy it with silently, and the workforce PRT is still on the device. ESTS then falls back to the account picker rather than switching to the PRT account. The extension cannot change this: it added its parameter, and the parameter arrived. Stated plainly for the user of that mode: **direct sign-in saves the picker click while the admin session is alive; after it expires, the picker appears once more.**
+
+Reported from real use on 2026-08-27, at the Azure portal: a tab left open overnight, F5 after 12–14 hours, direct sign-in configured with a valid account, the rule confirmed to have fired and no `prompt` set by the portal itself. This is the answer to V3 (§7.1, `verification-matrix.md` S4), and it reopens whether the mode earns its place → `open-questions.md` F10.
+
 ## 6. Escape hatch
 
 The problem only exists **in `login_hint` mode**: there, no other account is reachable, not even a test tenant. In picker mode (the default) every account is reachable through the account chooser, so an escape hatch has nothing to do.
@@ -167,12 +171,12 @@ The switch is not a fleet-level rollback path; that runs through the policy, see
 - 🟢 **The device claim survives — in both modes.** Verified manually in the sign-in log (2026-08-17). This clears the concept's central uncertainty: the extension does not break the device binding, and the device-claim CA does not block even in enforcement mode.
 - No redirect loop: Chromium does not execute a redirect to an identical URL. Proven automatically by `tests/e2e/dnr.e2e.js` (2026-08-17).
 - `host_permissions` on `login.microsoftonline.com` is sufficient — the rule applies even when the navigation starts from a foreign origin. Proven automatically (2026-08-17). The stop criterion from `security-review.md` §4 has therefore not been triggered.
+- 🟡 **`login_hint` does not override a foreign PRT once the hinted account's session is gone.** Observed 2026-08-27 in real use (Azure portal, tab open overnight, F5 after 12–14 h): the rule fired, the hint was in the URL, and ESTS showed the account picker instead of signing the configured account in. While the hinted account's ESTS session is alive, the hint is honoured silently. That closes V3 — negatively for the silent case. Consequence in §5.1; the decision it forces is F10 in `open-questions.md`.
 
 ### 7.2 Not yet confirmed
 
 | Assumption | Verification | Consequence if negative |
 | --- | --- | --- |
-| `login_hint` overrides a PRT belonging to a **different** user | Manually, in the admin profile with an active workforce PRT | The `login_hint` mode is dropped with no replacement; the picker remains the only mode and carries the concept on its own |
 | `prompt=select_account` + `login_hint` preselects the account in the picker | Manually, by adding both parameters to an authorize URL | None — the picker simply stays without preselection |
 
 ## 8. References

@@ -68,7 +68,7 @@ const TEMPLATE = `
     <input type="radio" name="mode" value="hint">
     <span class="grow">
       <strong>Direct sign-in</strong>
-      <small>Go straight to one account. No other account stays reachable.</small>
+      <small>Straight to one account while its sign-in session lasts; once it expires, the picker appears again. No other account stays reachable.</small>
     </span>
   </label>
 

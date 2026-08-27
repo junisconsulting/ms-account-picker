@@ -12,7 +12,16 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Nothing yet.
+**Rules and permissions:** no change. Only the wording of the popup changed.
+
+### Changed
+
+- The description of **Direct sign-in** in the popup and in the README now says when
+  it is silent: while the configured account's sign-in session is alive. After that
+  session expires, Microsoft shows the account picker once more, hint or no hint —
+  observed at the Azure portal on a tab refreshed after 12–14 hours. The extension's
+  parameter was in the request; what happens after that is Microsoft's decision, and
+  the old wording promised more than that.
 
 ## [0.11.1] — 2026-08-19
 

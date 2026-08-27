@@ -18,7 +18,7 @@ This extension gives the choice back. It adds **one query parameter** to Microso
 | Mode | What happens when you sign in |
 | --- | --- |
 | **Account picker** | The account chooser always appears. Nothing about your identity is sent to get there. |
-| **Direct sign-in** | Straight to the one account you entered. |
+| **Direct sign-in** | Straight to the one account you entered — while that account's sign-in session is alive. Once it has expired, Microsoft shows the picker once more; the extension cannot skip that. |
 | **Only the sites I list** | Nothing changes anywhere except on the sites you name yourself. |
 
 Two things sit alongside the mode:

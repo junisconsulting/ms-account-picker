@@ -12,7 +12,7 @@ These four assumptions carry the design. They are manual and one-off; while they
 | --- | --- | --- | --- |
 | ~~V1~~ ✅ | `prompt=select_account` **plus** `login_hint` preselects the account in the picker | **Answered 2026-08-18 by the documentation, not by a test.** Microsoft: *"You can't use both `login_hint` and `select_account`."* ([OIDC protocol reference](https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc)). The combination is unsupported, so there is nothing to measure | — |
 | ~~V2~~ ✅ | The device claim (`deviceDetail.deviceId`) survives `prompt`/`login_hint` | **Confirmed 2026-08-17, manually in the sign-in log, in both modes.** The extension does not break the device binding — the stop criterion of the whole concept is cleared | — |
-| V3 | `login_hint` overrides a PRT belonging to a **different** user | Manually, as with the `select_account` test | The `login_hint` mode is dropped with no replacement; the picker remains the only mode |
+| ~~V3~~ 🟡 | `login_hint` overrides a PRT belonging to a **different** user | **Answered 2026-08-27 from real use, not from a planned test.** Only while the hinted account has a live ESTS session. Once that session has expired and the workforce PRT is still present, ESTS shows the account picker — the hint arrived and was not enough (`architecture.md` §5.1, S4 below) | The planned consequence — drop the mode — is not applied on its own; it is **F10** in `open-questions.md` |
 | ~~V4~~ ✅ | `host_permissions` on `login.microsoftonline.com` is enough for the redirect | **Confirmed 2026-08-17 by `tests/e2e/dnr.e2e.js`** — the rule applies even for a navigation from a foreign origin for which there is no host permission. The stop criterion from `security-review.md` §4 is averted for now | — |
 
 ### V5 ✅ — Does `redirect_uri` carry the portal's domain? *(confirmed 2026-08-17)*
@@ -74,7 +74,7 @@ States: `S1` no session · `S2` admin session active · `S3` workforce PRT activ
 
 | Portal | S1 (A/B/C) | S2 (A/B/C) | S3 (A/B/C) | S4 (A/B/C) |
 | --- | --- | --- | --- | --- |
-| Azure | | | | |
+| Azure | | | | A: picker shown first, not the silent sign-in (V3, 2026-08-27) · B/C not observed |
 | Entra | | | | |
 | Defender | | | | |
 | Fabric | | | | |
@@ -108,6 +108,7 @@ One entry per cell: `A✓ B✓ C✓`, or the concrete deviation. No `n/a` withou
 
 | Date | Extension version | Edge version | Scope | Result | Performed by |
 | --- | --- | --- | --- | --- | --- |
+| 2026-08-27 | 0.11.0 / 0.11.1 (rule builder identical) | *to be recorded* | **V3 / Azure S4** — direct sign-in configured, Azure portal tab left open overnight, F5 after 12–14 h | 🟡 account picker instead of the silent sign-in. Rule fired, account valid, no `prompt` set by the portal. Not a defect of the rule: ESTS does not honour `login_hint` silently once that account's session has expired while a PRT for another account is present | pilot user, assessed by D. H. + Claude |
 | 2026-08-17 | 0.1.0 | *to be recorded* | **V5** — authorize requests from Azure, Defender and Power Automate checked for the domain inside `redirect_uri` | 🟢 all three carry it. Side finding: Defender uses the v1 endpoint, and both `/common/` and `/organizations/` occur | D. H. + Claude |
 | 2026-08-17 | 0.1.0 | n/a (Chrome 152 headless) | E2E extended: the per-site model E1–E9, the configuration UI on **both** surfaces | green, 38/38 | Claude, automated |
 | 2026-08-17 | 0.0.0 (unpacked) | *to be recorded* | E2E against the local fake endpoint: Z3, V4, the A1 mechanism, A3, Z5, the options page | green, 14/14 | Claude, automated |

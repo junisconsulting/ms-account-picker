@@ -39,6 +39,7 @@ These are documented properties, not vulnerabilities. A report about them is wel
 | --- | --- |
 | In `login_hint` mode the UPN appears in the authorize URL, and therefore in browser history and proxy logs | [docs/security-review.md](docs/security-review.md) §5 |
 | WS-Federation (`/wsfed?`) has no `prompt` parameter and is not covered | `CLAUDE.md` A9 |
+| In `login_hint` mode the account picker still appears once the configured account's sign-in session has expired — the hint is honoured silently only against a live session | [docs/architecture.md](docs/architecture.md) §5.1 |
 | A per-site rule identifies the portal by the host inside `redirect_uri`, which is a heuristic with stated limits | [docs/verification-matrix.md](docs/verification-matrix.md) V5 |
 | Endpoint aliases `login.windows.net` and `login.microsoft.com` are deliberately not covered | `CLAUDE.md` A7 |
 | A percent-encoded dot (`%2E`) in a `redirect_uri` host could in theory bypass the host boundary of a site pattern. The consequence is the wrong *mode*, never a redirected token | [docs/security-review.md](docs/security-review.md) §6, review history, per-site rules entry |
