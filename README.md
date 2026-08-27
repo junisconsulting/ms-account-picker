@@ -7,7 +7,6 @@ On a managed Windows device the browser carries your Windows identity into every
 This extension gives the choice back. It adds **one query parameter** to Microsoft's sign-in request, so you either get the account chooser or land straight on the account you configured. That is the whole mechanism.
 
 > **[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/ms-account-picker/bapkfcamfgmaoaedkdljdmgpedpffjen)** · Manifest V3, works in Edge and Chrome.
-> The store currently serves **0.11.0**. This repository is one patch ahead — see [CHANGELOG.md](CHANGELOG.md).
 
 | | |
 | --- | --- |

@@ -11,7 +11,9 @@ Six steps, in order. Steps 2 and 3 produce evidence; steps 4–6 publish it.
 
 ## 0. Choose the version — rules, not gut feeling
 
-The version lives in **exactly one place**: `version` in `src/manifest.json`. The UI reads it at runtime via `chrome.runtime.getManifest().version`, so there is no second copy to bump and no build step where it could drift. Never add a version to `src/ui/vendor.js` — that file says why.
+The version lives in **exactly one place**: `version` in `src/manifest.json`. The UI reads it at runtime via `chrome.runtime.getManifest().version`, so there is no second copy to bump and no build step where it could drift. Never add a version to `src/ui/vendor.js` — that file says why, and the same answer covers `README.md`: a number repeated for the reader's convenience is a number that goes stale on the next release. Version history belongs in `CHANGELOG.md`, which is where it is already.
+
+Two places in `docs/deployment.md` do carry version numbers, and legitimately so: they record what the *store* serves, not what the source is. They are updated after an upload, not at the bump — step 6.
 
 Semantic versioning, translated for a browser extension with no public API: the "contract" is what an administrator must **do** or will **notice**. Judge the **whole diff since the last release** and take the **highest** rule that applies.
 
@@ -91,7 +93,12 @@ Sequence from `docs/deployment.md` §1.1: create or open the dashboard item → 
 
 Before submitting for review, walk the checklist at the end of `docs/store-listing.md`. Keep the store summary byte-identical to `description` in `src/manifest.json` — they are shown side by side, and drift between them is the kind of finding that costs a review round.
 
-After a successful upload, update the register row's store item state.
+Once the version is **actually live** in the store, two records follow the number and have to be dragged along by hand:
+
+- The artefact register in `docs/deployment.md` §3.1 — this version's row becomes the one the store serves, and the previous row loses that label. Two rows, not one.
+- `minimum_version_required` in the `ExtensionSettings` policy in `docs/deployment.md` §2 — raise it to the version now published. **Never before it is live:** a floor above what the store serves does not hold an old version back, it leaves the fleet without a version it is allowed to run.
+
+Nothing else in the repository carries a version, and nothing else should start to (step 0).
 
 ## Out of scope
 
