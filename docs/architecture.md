@@ -70,6 +70,39 @@ The per-site condition finds the portal host inside the percent-encoded `redirec
 
 **No list of portals ships with the extension.** A prefilled set of Microsoft hostnames was considered and rejected on 2026-08-18. Microsoft is renaming its portal estate (`compliance.` → `purview.`, `endpoint.` → `intune.`, the consolidation onto `*.cloud.microsoft`), so a shipped list is stale on arrival — and staleness surfaces as silent non-coverage on the new hostname. It would also reach the customer through the auto-updating delivery route they cannot decline (F9), changing the rule surface under them. The list stays empty and customer-owned; the UI offers free text, not a menu.
 
+### 3.2 Two protocols, two matching mechanisms *(added 2026-09-08)*
+
+A third-party relying party does not necessarily reach ESTS over OIDC. AWS — connected as an enterprise application — is a **SAML** relying party, and its sign-on request never touches `/oauth2/authorize`. Until this was found, the extension was silently inert for it: the admin surfed the AWS login URL, got redirected to `login.microsoftonline.com`, and was signed in with the workforce account with no rule in sight.
+
+The two protocols need **opposite** matching mechanisms, and that is the whole content of this section:
+
+| | OIDC | SAML |
+| --- | --- | --- |
+| Endpoint | `/<tenant>/oauth2/[v2.0/]authorize?…` | `/<tenant>/saml2` |
+| Method | GET | **POST** (HTTP-POST binding) |
+| Query string | carries everything | **none at all** |
+| Where the relying party sits | percent-encoded in `redirect_uri`, in the URL | deflate+base64 inside the request **body** |
+| How a site is recognised | `regexFilter` on the URL | `condition.initiatorDomains` |
+| Why not the other way | `initiatorDomains` is unusable: a typed URL, a bookmark or a 302 chain carries no usable initiator (§4.2) | the URL identifies nothing — every SAML application of a tenant posts to the same one — and DNR cannot read bodies |
+
+**The consequence for the configuration is deliberately invisible.** A user enters a domain once; which mechanism recognises it is an implementation detail. `buildRules` emits a pair of rules per protocol for every configured site, and the pair that does not apply simply never matches.
+
+**The consequence that is not invisible, and belongs in the UI:** for SAML the domain to list is the origin that **hosts the auto-submitting form**, which is not the address the admin types. Measured for the target environment's relying party on 2026-09-08: the user surfs an AWS URL and the form is served from `eu-central-1.signin.aws`. An admin who lists the address they know will list the wrong host and see nothing happen. The site list hint says so.
+
+Two further asymmetries that are recorded rather than smoothed over:
+
+- `initiatorDomains` matches a domain **and its subdomains**; the OIDC site condition is an exact host comparison (V5). A listed `example.com` therefore reaches `sso.example.com` for SAML but not for OIDC.
+- Because the SAML base rule cannot be narrowed by URL, its unscoped form matches **every** SAML application of the tenant. That is the only global reach a SAML rule can have. In the activated admin profile that is the intent; the workforce profile is protected by A3, not by the rule shape.
+
+**Four properties were measured before this rule was written** (Chromium 152, 2026-09-08 — `verification-matrix.md` M1–M4). Each of them, had it come out the other way, would have made the rule break a sign-in instead of augmenting it:
+
+1. `queryTransform` preserves percent-encoded values byte-for-byte and does not reorder parameters — so a base64+deflate `AuthnRequest` and a redirect-binding `Signature` survive.
+2. A DNR redirect keeps the **POST method and the request body**. A downgrade to GET would drop the `AuthnRequest` and produce `AADSTS750054`.
+3. A pattern that does not demand `?` matches a query-less URL, and `addOrReplaceParams` creates the query string.
+4. `initiatorDomains` resolves for a cross-origin top-level form POST, including across a 302 chain into the form page.
+
+**What is still open:** whether ESTS *acts on* `prompt=select_account` at the SAML endpoint. `login_hint` is documented there ([SAML protocol reference](https://learn.microsoft.com/en-us/entra/identity-platform/single-sign-on-saml-protocol), *Subject*) and confirmed in the target environment on 2026-09-08 — it signed the admin account in seamlessly with both accounts holding live sessions. `prompt=select_account` is not documented for SAML and Microsoft contradicts it in [Force account picker with SAML login](https://learn.microsoft.com/en-us/answers/questions/2124556/force-account-picker-with-saml-login), while community reports claim it works. Carried as V7 in `verification-matrix.md` until the target environment answers it.
+
 ## 4. Components
 
 Deliberately minimal — no framework, no build step for the extension itself, no remote code.
@@ -92,9 +125,14 @@ Configuration UI  →  chrome.storage.local  →  Service Worker  →  DNR dynam
 ```
 action.type              = "redirect"
 redirect.transform.queryTransform.addOrReplaceParams
-condition.regexFilter    = ^https://login\.microsoftonline\.com/[^/]+/oauth2/(?:v2\.0/)?authorize\?
 condition.resourceTypes  = ["main_frame"]
+
+condition.regexFilter    = ^https://login\.microsoftonline\.com/[^/]+/oauth2/(?:v2\.0/)?authorize\?   (OIDC)
+condition.regexFilter    = ^https://login\.microsoftonline\.com/[^/]+/saml2(?:\?|$)                   (SAML)
+condition.initiatorDomains = ["<relying party>"]   — SAML site rules only (§3.2)
 ```
+
+The SAML pattern deliberately does **not** end in `\?`. The HTTP-POST binding posts to a URL with no query string, so a pattern demanding one would never fire (A11). `(?:\?|$)` is the path-level equivalent of the host boundary in the site condition: it accepts both bindings and refuses `/saml2something`.
 
 ### 4.2 Per-site rules
 
@@ -106,7 +144,9 @@ One global default plus exceptions per portal. Three priority bands:
 | Site guard | 2 | site regex → `action: "allow"` | for **every** configured site |
 | Site injection | 3 | the **identical** site regex → that site's parameter | site mode ≠ `off` |
 
-**How the portal is recognised.** Not by the initiator: `condition.initiatorDomains` is unusable here, because a browser-initiated navigation — a typed URL, a bookmark, history — has **no** initiator, and an HTTP 302 keeps the *original* initiator rather than the redirecting portal (Chromium sources `url_pattern_index.cc`, `navigation_params.mojom`). Filtering on that basis would work sporadically, which is worse than not at all.
+**How the portal is recognised — for OIDC.** Not by the initiator: `condition.initiatorDomains` is unusable *there*, because a browser-initiated navigation — a typed URL, a bookmark, history — has **no** initiator, and an HTTP 302 keeps the *original* initiator rather than the redirecting portal (Chromium sources `url_pattern_index.cc`, `navigation_params.mojom`). Filtering on that basis would work sporadically, which is worse than not at all.
+
+**That rejection is scoped, not overturned** *(2026-09-08)*. It is a statement about browser-initiated navigations. A SAML HTTP-POST binding is not one: it is a **form submit from the relying party's own page**, which does have an initiator — confirmed to survive a 302 chain into the form page. So OIDC matches on the URL and SAML matches on the initiator, and each protocol uses the mechanism the other one cannot (§3.2).
 
 Instead, the portal's domain is already present in the authorize URL: percent-encoded inside `redirect_uri`. Confirmed for three portals of the target environment → `verification-matrix.md` V5, together with the limits of the heuristic.
 
@@ -129,6 +169,7 @@ The binding version is in `CLAUDE.md` (A1–A10). The reasoning:
 - ⚠️ **Cover the v1 and the v2 endpoint:** `/oauth2/authorize` and `/oauth2/v2.0/authorize`.
 - **Endpoint aliases (`login.windows.net`, `login.microsoft.com`): deliberately not covered** (2026-08-17). No portal in the target environment is known to use them, and each alias is another `host_permissions` entry. If a concrete need appears: a host-permission review, not a bugfix.
 - ⚠️ **WS-Federation (`/wsfed?`) has no `prompt`.** Not covered — a known gap.
+- 🔴 **The SAML endpoint (`/saml2`) is covered, and its condition must never require a query string.** Per-relying-party scoping runs through `initiatorDomains`, never through the URL (A11, §3.2).
 - **Without explicit activation in the profile, no rule may be registered.** The extension is then functionally inert. That is what makes a browser-wide force-install possible without affecting the workforce profile. The gate is a flag in `chrome.storage.local` (per profile), **not** the UPN — the picker default needs no UPN at all.
 
 ### 5.1 The boundary: an existing portal session
@@ -171,6 +212,7 @@ The switch is not a fleet-level rollback path; that runs through the policy, see
 - 🟢 **The device claim survives — in both modes.** Verified manually in the sign-in log (2026-08-17). This clears the concept's central uncertainty: the extension does not break the device binding, and the device-claim CA does not block even in enforcement mode.
 - No redirect loop: Chromium does not execute a redirect to an identical URL. Proven automatically by `tests/e2e/dnr.e2e.js` (2026-08-17).
 - `host_permissions` on `login.microsoftonline.com` is sufficient — the rule applies even when the navigation starts from a foreign origin. Proven automatically (2026-08-17). The stop criterion from `security-review.md` §4 has therefore not been triggered.
+- 🟢 **SAML is reachable, and `login_hint` works there.** Confirmed in the target environment on 2026-09-08 against the real AWS relying party: with a rule scoped to the form's origin, the admin account was signed in seamlessly — while **both** accounts held live sessions, which without the rule produces the account picker. The four mechanical preconditions (M1–M4) were measured beforehand, so this was a confirmation rather than a discovery.
 - 🟡 **`login_hint` does not override a foreign PRT once the hinted account's session is gone.** Observed 2026-08-27 in real use (Azure portal, tab open overnight, F5 after 12–14 h): the rule fired, the hint was in the URL, and ESTS showed the account picker instead of signing the configured account in. While the hinted account's ESTS session is alive, the hint is honoured silently. That closes V3 — negatively for the silent case. Consequence in §5.1; the decision it forces is F10 in `open-questions.md`.
 
 ### 7.2 Not yet confirmed
@@ -178,6 +220,7 @@ The switch is not a fleet-level rollback path; that runs through the policy, see
 | Assumption | Verification | Consequence if negative |
 | --- | --- | --- |
 | `prompt=select_account` + `login_hint` preselects the account in the picker | Manually, by adding both parameters to an authorize URL | None — the picker simply stays without preselection |
+| **V7** — `prompt=select_account` takes effect at the SAML endpoint | A temporary rule in the target environment, in the state where the workforce PRT would otherwise sign in silently | The picker mode leaves SAML relying parties alone and that becomes a documented gap alongside A9. `login_hint` is unaffected — it is documented for SAML and confirmed |
 
 ## 8. References
 

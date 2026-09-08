@@ -2,7 +2,7 @@
 
 ## Project
 
-MS Account Picker — a Manifest-V3 browser extension for Microsoft Edge. On hybrid-joined Windows clients Edge injects the workforce user's Primary Refresh Token (PRT) into **every** browser profile, so an admin working in a second profile is silently signed in with the wrong account. The extension appends a single query parameter (`prompt=select_account` or `login_hint=<EADM-UPN>`) to the OAuth authorize request in flight, so the admin lands on their cloud-only admin account (EADM) instead.
+MS Account Picker — a Manifest-V3 browser extension for Microsoft Edge. On hybrid-joined Windows clients Edge injects the workforce user's Primary Refresh Token (PRT) into **every** browser profile, so an admin working in a second profile is silently signed in with the wrong account. The extension appends a single query parameter (`prompt=select_account` or `login_hint=<EADM-UPN>`) to the sign-on request in flight — the OIDC authorize request and the SAML sign-on request alike — so the admin lands on their cloud-only admin account (EADM) instead.
 
 **This extension operates inside the authentication flow of privileged accounts.** Whoever can ship or update it could rewrite `redirect_uri` instead of `prompt` — a perfectly camouflaged token-theft path against exactly the population that phishing-resistant authentication is meant to protect. It is classified as a **T0 influence path**. Every rule below follows from that, not from style preference.
 
@@ -43,8 +43,9 @@ These are not preferences. A change that violates one is wrong, not debatable.
 | A6 | ⚠️ Cover v1 **and** v2 endpoints: `/oauth2/authorize` and `/oauth2/v2.0/authorize` | Portals still use both |
 | A7 | Endpoint aliases `login.windows.net` / `login.microsoft.com` are **out of scope** (decided 2026-08-17) | No portal in the target environment is known to use them, and each alias is another `host_permissions` entry. Adding one is a host-permission review, not a bugfix |
 | A8 | `prompt=select_account` and `login_hint` are **mutually exclusive** — Microsoft: *"You can't use both"* — and **picker mode is the default** | A set `prompt=select_account` makes `login_hint` ineffective. The picker is the mandatory baseline; `login_hint` is opt-in per profile (`docs/architecture.md` §3.1). The third mode, *only the sites I list*, picks **where** the extension acts, not what it injects — it leaves this constraint untouched |
-| A9 | WS-Federation (`/wsfed?`) knows no `prompt` — **known gap, documented, not worked around** | See `docs/architecture.md` |
+| A9 | WS-Federation (`/wsfed?`) knows no `prompt` — **known gap, documented, not worked around** | See `docs/architecture.md`. SAML used to sit in this row and no longer does — see A11 |
 | A10 | The service worker does **nothing but rule sync** | No listeners, no state, no background work beyond `chrome.storage` → DNR |
+| A11 | 🔴 The SAML endpoint (`/saml2`) is covered, and its condition must **never** require a query string. Per-relying-party scoping runs through `condition.initiatorDomains`, **never** through the URL | The HTTP-POST binding — what the target environment's relying party uses — POSTs the `AuthnRequest` in the **body**, to a URL with no query at all, and every SAML application of a tenant posts to that same URL. The relying party sits deflate+base64-encoded inside that body, which DNR cannot read, so the initiator is the only discriminator there is. Measured 2026-09-08 → `docs/verification-matrix.md` M1–M4 |
 
 ## Security Rules
 
@@ -63,7 +64,7 @@ Derived from the T0 classification (`docs/security-review.md`). Formulated as ru
 
 After any code change run the project verify procedure (`.claude/skills/verify/`). It is also wired as a `Stop` hook, so a red tree blocks the turn from ending. **Exit 2 means not done.**
 
-Unit-testable (and therefore mandatory as a unit test): UPN → DNR rule object · RE2 compatibility of the generated `regexFilter` · no `resourceTypes` other than `main_frame` · empty configuration → no rule.
+Unit-testable (and therefore mandatory as a unit test): UPN → DNR rule object · RE2 compatibility of the generated `regexFilter` · no `resourceTypes` other than `main_frame` · empty configuration → no rule · the two endpoint patterns never both match one URL.
 
 ## Repository Layout
 

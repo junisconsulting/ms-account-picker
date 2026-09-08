@@ -57,13 +57,14 @@ WHAT IT DOES
 HOW IT WORKS
 
 The extension does not build sign-in URLs and does not read pages. It appends
-one parameter — prompt=select_account or login_hint — to the authorize request
-your Microsoft portal already makes. Everything else about that request is left
-exactly as the portal built it.
+one parameter — prompt=select_account or login_hint — to the sign-in request
+the site you are visiting already makes. Everything else about that request is
+left exactly as the site built it.
 
-That single parameter is why it works on any Microsoft portal without a list of
-sites to maintain, and it is why the extension needs access to exactly one
-address: login.microsoftonline.com.
+That single parameter is why it works on any Microsoft portal, and on any
+application connected to your organisation through SAML, without a list of sites
+to maintain — and it is why the extension needs access to exactly one address:
+login.microsoftonline.com.
 
 WHAT IT DOES NOT DO
 
@@ -98,7 +99,7 @@ Licensed under Apache-2.0. Built by junis.
 The dashboard requires one purpose in one sentence.
 
 ```
-The extension has a single purpose: adding one query parameter — prompt=select_account or login_hint — to Microsoft's OAuth authorize request, so the user can choose which Microsoft account they are signed in with.
+The extension has a single purpose: adding one query parameter — prompt=select_account or login_hint — to Microsoft's sign-in request, so the user can choose which Microsoft account they are signed in with.
 ```
 
 ## Permission justifications
@@ -120,7 +121,7 @@ Stores the user's own settings: whether the extension is active in this browser 
 **Host permission `https://login.microsoftonline.com/*`**
 
 ```
-This is the sign-in endpoint whose authorize request the extension modifies, and the only address it needs. The extension requests no access to the Microsoft portals the user visits — it never sees an authenticated session, only the sign-in request on its way to Microsoft.
+This is the sign-in endpoint whose requests the extension modifies, and the only address it needs. The extension requests no access to the sites the user visits — it never sees an authenticated session, only the sign-in request on its way to Microsoft.
 ```
 
 ## Privacy practices

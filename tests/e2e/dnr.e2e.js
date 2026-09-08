@@ -25,9 +25,12 @@ const SRC = resolve(dirname(fileURLToPath(import.meta.url)), "../../src");
 const PORT = 8443;
 const UPN = "admin@contoso.onmicrosoft.com";
 
-// Two fake portals. They are never fetched — a portal only ever appears as a
-// string inside the redirect_uri of an authorize URL, which is exactly the
-// mechanism the per-site rules match on.
+// Two fake relying parties. For OIDC they are never fetched — a portal only
+// appears as a string inside the redirect_uri of an authorize URL, which is the
+// mechanism the per-site rules match on there. For SAML they ARE fetched: the
+// sign-on request is a form POST from the relying party's own page, so the host
+// has to exist for it to become the request's initiator. One site list, two
+// mechanisms — that is what the SAML block below proves end to end.
 const SITE_A = "portal-a.example";
 const SITE_B = "portal-b.example";
 
@@ -40,6 +43,19 @@ const authorizeFor = (domain, extra = "") =>
 // Every request the fake ESTS sees, in order. This list IS the loop detector:
 // one navigation must produce exactly two entries, never more.
 const seen = [];
+
+// The same requests with method and body. SAML travels as an HTTP-POST binding,
+// so "did the URL arrive right" is only half the question — the AuthnRequest
+// sits in the body, and a transform that dropped it would break the sign-in.
+const requests = [];
+
+/** The SAML endpoint of a fake tenant. Note: no query string — that is the point. */
+const SAML2 = "https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000/saml2";
+
+// A SAML AuthnRequest is base64+deflate, so its percent-encoded form is full of
+// %2B, %2F and %3D. Whether queryTransform hands those through untouched decides
+// whether a rule augments the request or corrupts it.
+const SAML_REQUEST = "fZJNT+MwEIb/SuR7Pu2yQEStlEUrIXFYtIUDNzeZthaOHTzjLvx7nKQVcCA3a=";
 
 /** Locates a Chrome binary — env override first, then the puppeteer cache. */
 function findChrome() {
@@ -164,33 +180,61 @@ async function navigate(devtoolsPort, url) {
 const workdir = mkdtempSync(join(tmpdir(), "msap-e2e-"));
 const { key, cert } = makeCert(workdir);
 
+/**
+ * The shape a SAML relying party actually sends: an auto-submitting form whose
+ * POST carries the AuthnRequest in the body. Measured against the live AWS flow
+ * on 2026-09-08 — that request has no query string at all.
+ */
+const samlForm = `<html><body onload="document.forms[0].submit()">
+  <form method="POST" action="${SAML2}">
+    <input type="hidden" name="SAMLRequest" value="${SAML_REQUEST}">
+    <input type="hidden" name="RelayState" value="e2e-relay-state">
+  </form></body></html>`;
+
 const server = createServer({ key, cert }, (req, res) => {
-  seen.push(req.url);
-  // The fake "portal": a cross-origin 302 into the authorize endpoint. This is
-  // what V4 asks about — does the rule still fire when another origin started
-  // the navigation, without host permissions for that origin?
-  if (req.url.startsWith("/portal")) {
-    res.writeHead(302, {
-      location: "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?client_id=test",
-    });
-    return res.end();
-  }
-  // The silent-renewal shape: an authorize request inside a hidden iframe. This
-  // is what constraint A1 protects — the rule must not touch it, or token
-  // renewal breaks in every M365 portal. The `?site` variant carries a
-  // redirect_uri that a configured per-site rule would match, so it also proves
-  // the site rules respect A1.
-  if (req.url.startsWith("/iframe")) {
-    const redirect = req.url.includes("site")
-      ? `&redirect_uri=https%3A%2F%2F${SITE_A}%2Fauth`
-      : "";
+  let body = "";
+  req.on("data", (chunk) => { body += chunk; });
+  req.on("end", () => {
+    seen.push(req.url);
+    requests.push({ method: req.method, url: req.url, body });
+    // The fake "portal": a cross-origin 302 into the authorize endpoint. This is
+    // what V4 asks about — does the rule still fire when another origin started
+    // the navigation, without host permissions for that origin?
+    if (req.url.startsWith("/portal")) {
+      res.writeHead(302, {
+        location: "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?client_id=test",
+      });
+      return res.end();
+    }
+    // The SAML launcher. Served from whichever relying-party host the test
+    // navigated to, which is what makes that host the request's initiator —
+    // the only discriminator a SAML rule has.
+    if (req.url.startsWith("/saml-launch")) {
+      res.writeHead(200, { "content-type": "text/html" });
+      return res.end(samlForm);
+    }
+    // A1 for SAML: the same POST inside a hidden iframe must not be touched.
+    if (req.url.startsWith("/saml-iframe")) {
+      res.writeHead(200, { "content-type": "text/html" });
+      return res.end(`<html><body><iframe src="/saml-launch"></iframe></body></html>`);
+    }
+    // The silent-renewal shape: an authorize request inside a hidden iframe. This
+    // is what constraint A1 protects — the rule must not touch it, or token
+    // renewal breaks in every M365 portal. The `?site` variant carries a
+    // redirect_uri that a configured per-site rule would match, so it also proves
+    // the site rules respect A1.
+    if (req.url.startsWith("/iframe")) {
+      const redirect = req.url.includes("site")
+        ? `&redirect_uri=https%3A%2F%2F${SITE_A}%2Fauth`
+        : "";
+      res.writeHead(200, { "content-type": "text/html" });
+      return res.end(
+        `<html><body><iframe src="https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?client_id=test&prompt=none${redirect}"></iframe></body></html>`,
+      );
+    }
     res.writeHead(200, { "content-type": "text/html" });
-    return res.end(
-      `<html><body><iframe src="https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?client_id=test&prompt=none${redirect}"></iframe></body></html>`,
-    );
-  }
-  res.writeHead(200, { "content-type": "text/html" });
-  res.end(`<html><body>ok</body></html>`);
+    res.end(`<html><body>ok</body></html>`);
+  });
 });
 await new Promise((r) => server.listen(PORT, "127.0.0.1", r));
 
@@ -201,9 +245,13 @@ const chrome = spawn(findChrome(), [
   `--user-data-dir=${workdir}/profile`,
   `--load-extension=${SRC}`,
   `--disable-extensions-except=${SRC}`,
-  // Both hostnames resolve to the fake ESTS. The extension has host permissions
-  // for the first one only — that asymmetry is the point of the V4 check.
-  `--host-resolver-rules=MAP login.microsoftonline.com 127.0.0.1:${PORT},MAP portal.test 127.0.0.1:${PORT}`,
+  // Every hostname resolves to the fake ESTS. The extension has host permissions
+  // for the first one only — that asymmetry is the point of the V4 check. The
+  // two relying-party hosts exist so they can serve the SAML form and thereby
+  // become the initiator of the POST.
+  `--host-resolver-rules=MAP login.microsoftonline.com 127.0.0.1:${PORT}` +
+    `,MAP portal.test 127.0.0.1:${PORT}` +
+    `,MAP ${SITE_A} 127.0.0.1:${PORT},MAP ${SITE_B} 127.0.0.1:${PORT}`,
   "--ignore-certificate-errors",
   "--remote-debugging-port=0",
   "about:blank",
@@ -251,11 +299,13 @@ try {
   await cdp.evaluate("chrome.storage.local.set({ enabled: true, mode: 'picker' })");
   await sleep(300);
   const registered = await rules();
-  await check("Chromium accepts the rule (regexFilter is valid RE2)", () => {
-    assert.equal(registered.length, 1);
+  await check("Chromium accepts both base rules (regexFilter is valid RE2)", () => {
+    assert.equal(registered.length, 2, JSON.stringify(registered.map((r) => r.id)));
   });
-  await check("resourceTypes is exactly [main_frame]", () => {
-    assert.deepEqual(registered[0].condition.resourceTypes, ["main_frame"]);
+  await check("resourceTypes is exactly [main_frame] on both", () => {
+    for (const rule of registered) {
+      assert.deepEqual(rule.condition.resourceTypes, ["main_frame"]);
+    }
   });
 
   // DNR redirects BEFORE the request leaves the browser, so the fake ESTS never
@@ -421,8 +471,8 @@ try {
       { domain: "third.example.com", mode: "picker" },
     ],
   });
-  await check("three sites produce base + 3 guards + 2 injections = 6 rules", async () => {
-    assert.equal((await rules()).length, 6);
+  await check("three sites produce base + 3 guards + 2 injections, per protocol = 12", async () => {
+    assert.equal((await rules()).length, 12);
   });
   await check("isRegexSupported says yes for every registered regexFilter", async () => {
     const verdicts = await cdp.evaluate(`
@@ -446,10 +496,11 @@ try {
       { domain: SITE_A, mode: "off" },
     ],
   });
-  await check("base rule and the good site survive the bad entry", async () => {
+  await check("base rules and the good site survive the bad entry", async () => {
     const registered = await rules();
-    assert.equal(registered.length, 2, JSON.stringify(registered.map((r) => r.id)));
-    assert.equal(registered[0].id, 1);
+    assert.equal(registered.length, 4, JSON.stringify(registered.map((r) => r.id)));
+    assert.ok(registered.some((r) => r.id === 1), "the OIDC base rule must survive");
+    assert.ok(registered.some((r) => r.id === 2), "the SAML base rule must survive");
   });
 
   console.log("\nE8 — 'only the sites I list': the list is the whole reach");
@@ -483,8 +534,95 @@ try {
   await sleep(800);
   await check("the rule set matches the second write, not the first", async () => {
     const registered = await rules();
-    assert.equal(registered.length, 2, JSON.stringify(registered.map((r) => r.id)));
-    assert.deepEqual(registered[1].action, { type: "allow" });
+    // The second write leaves one site set to "off": two base rules plus a guard
+    // per protocol, and no injection anywhere.
+    assert.equal(registered.length, 4, JSON.stringify(registered.map((r) => r.id)));
+    assert.equal(registered.filter((r) => r.action.type === "allow").length, 2);
+  });
+
+  // --- SAML: the second protocol -------------------------------------------
+  //
+  // Four properties were measured on Chromium 152 (2026-09-08) BEFORE this rule
+  // was written, because each of them, if false, would have made the rule break
+  // a sign-in rather than augment it. They are pinned here so a browser update
+  // cannot take one away silently.
+
+  /** SAML requests since a mark, with method and body — the URL alone is not enough here. */
+  const samlSince = (mark) => requests.slice(mark).filter((r) => r.url.includes("/saml2"));
+
+  console.log("\nS1 — HTTP-POST binding: the shape AWS actually sends");
+  await configure({ enabled: true, mode: "picker" });
+  let mark = requests.length;
+  await navigate(devtoolsPort, `https://${SITE_A}/saml-launch`);
+  const s1 = samlSince(mark);
+  await check("exactly one saml2 request — no loop on a query-less URL", () => {
+    assert.equal(s1.length, 1, `saw ${s1.length}: ${s1.map((r) => r.url).join(" | ")}`);
+  });
+  await check("the parameter is injected although the URL carried no query string", () => {
+    // The reason SAML_REGEX must not end in `\?`: this URL has nothing to match.
+    assert.match(s1[0]?.url ?? "", /[?&]prompt=select_account(&|$)/);
+  });
+  await check("the request is still a POST — no downgrade to GET", () => {
+    assert.equal(s1[0]?.method, "POST");
+  });
+  await check("the AuthnRequest survives in the body", () => {
+    // A GET downgrade would drop the body and ESTS would answer AADSTS750054.
+    assert.ok(
+      (s1[0]?.body ?? "").includes(`SAMLRequest=${encodeURIComponent(SAML_REQUEST)}`),
+      `body was: ${JSON.stringify(s1[0]?.body)}`,
+    );
+  });
+
+  console.log("\nS2 — HTTP-Redirect binding: percent-encoded values must survive byte-identical");
+  // A signed AuthnRequest is signed over the raw query string. If queryTransform
+  // re-encoded %2B/%2F/%3D or reordered the parameters, the signature would fail
+  // and the extension would be the cause.
+  const REDIRECT_QUERY =
+    `SAMLRequest=${encodeURIComponent(SAML_REQUEST)}` +
+    `&RelayState=${encodeURIComponent(`https://${SITE_A}/start?id=7`)}` +
+    `&SigAlg=${encodeURIComponent("http://www.w3.org/2001/04/xmldsig-more#rsa-sha256")}` +
+    `&Signature=${encodeURIComponent("aB+cD/eF==gH+iJ")}`;
+  mark = requests.length;
+  await navigate(devtoolsPort, `${SAML2}?${REDIRECT_QUERY}`);
+  const s2 = samlSince(mark);
+  await check("one request, and every parameter arrives untouched and in order", () => {
+    assert.equal(s2.length, 1, `saw ${s2.length}`);
+    assert.ok(
+      s2[0].url.endsWith(`/saml2?${REDIRECT_QUERY}&prompt=select_account`),
+      `query was rebuilt: ${s2[0].url}`,
+    );
+  });
+
+  console.log("\nS3 — one site list, two mechanisms: the relying party is scoped by initiator");
+  await configure({
+    enabled: true,
+    mode: "listed",
+    upn: UPN,
+    sites: [{ domain: SITE_A, mode: "hint" }],
+  });
+  mark = requests.length;
+  await navigate(devtoolsPort, `https://${SITE_A}/saml-launch`);
+  await navigate(devtoolsPort, `https://${SITE_B}/saml-launch`);
+  const s3 = samlSince(mark);
+  await check("the listed relying party gets the parameter", () => {
+    assert.equal(s3.length, 2, `saw ${s3.length}`);
+    assert.match(s3[0].url, /[?&]login_hint=/);
+  });
+  await check("an unlisted relying party is left exactly as it was", () => {
+    // The inverted failure direction of the listed mode, on the SAML side.
+    assert.doesNotMatch(s3[1].url, /[?&]login_hint=/);
+    assert.doesNotMatch(s3[1].url, /[?&]prompt=/);
+  });
+
+  console.log("\nS4 — A1 holds for SAML: a framed sign-on request is not touched");
+  await configure({ enabled: true, mode: "picker" });
+  mark = requests.length;
+  await navigate(devtoolsPort, `https://${SITE_A}/saml-iframe`);
+  const s4 = samlSince(mark);
+  await check("the POST inside an iframe passes through unchanged", () => {
+    assert.equal(s4.length, 1, `saw ${s4.length}`);
+    assert.doesNotMatch(s4[0].url, /prompt=/);
+    assert.equal(s4[0].method, "POST");
   });
 
   // --- the configuration UI ------------------------------------------------
@@ -560,12 +698,14 @@ try {
     await set(`const c = document.getElementById('enabled');
                c.checked = true; c.dispatchEvent(new Event('change'));`);
     await sleep(300);
-    await check("activating the profile registers the default rule", async () => {
+    await check("activating the profile registers the default rules", async () => {
       const registered = await rules();
-      assert.equal(registered.length, 1);
-      assert.deepEqual(registered[0].action.redirect.transform.queryTransform.addOrReplaceParams, [
-        { key: "prompt", value: "select_account" },
-      ]);
+      assert.equal(registered.length, 2, JSON.stringify(registered.map((r) => r.id)));
+      for (const rule of registered) {
+        assert.deepEqual(rule.action.redirect.transform.queryTransform.addOrReplaceParams, [
+          { key: "prompt", value: "select_account" },
+        ]);
+      }
     });
 
     // A UPN carrying an extra parameter must never reach a rule — the trust
@@ -581,12 +721,14 @@ try {
 
     await commit("upn", UPN);
     await sleep(400);
-    await check("a valid admin account produces the login_hint rule", async () => {
+    await check("a valid admin account produces the login_hint rules", async () => {
       const registered = await rules();
-      assert.equal(registered.length, 1);
-      assert.deepEqual(registered[0].action.redirect.transform.queryTransform.addOrReplaceParams, [
-        { key: "login_hint", value: UPN },
-      ]);
+      assert.equal(registered.length, 2, JSON.stringify(registered.map((r) => r.id)));
+      for (const rule of registered) {
+        assert.deepEqual(rule.action.redirect.transform.queryTransform.addOrReplaceParams, [
+          { key: "login_hint", value: UPN },
+        ]);
+      }
     });
 
     // Chrome caps an action popup at 800x600 and scrolls past that. This is the
@@ -610,7 +752,7 @@ try {
     await sleep(400);
     await check("adding a site exception adds its guard and injection", async () => {
       const registered = await rules();
-      assert.equal(registered.length, 3, JSON.stringify(registered.map((r) => r.id)));
+      assert.equal(registered.length, 6, JSON.stringify(registered.map((r) => r.id)));
       assert.equal(await page.evaluate("document.querySelectorAll('#site-list .site').length"), 1);
       assert.equal(
         await page.evaluate("document.querySelector('#site-list .dom').textContent"),
@@ -623,13 +765,13 @@ try {
                  document.getElementById('site-add').click();`);
       await sleep(300);
       assert.match(await text("status"), /plain domain/);
-      assert.equal((await rules()).length, 3);
+      assert.equal((await rules()).length, 6);
     });
 
     await check("removing the site removes its rules again", async () => {
       await set("document.querySelector('#site-list .rm').click();");
       await sleep(400);
-      assert.equal((await rules()).length, 1);
+      assert.equal((await rules()).length, 2);
     });
 
     // The inverted mode. Its failure direction is the opposite of every other
@@ -650,11 +792,13 @@ try {
     await sleep(400);
     await check("a listed site gets its injection, with no base rule behind it", async () => {
       const registered = await rules();
-      assert.equal(registered.length, 1, JSON.stringify(registered.map((r) => r.id)));
-      assert.ok(registered[0].id >= 2000, `expected a site injection, got id ${registered[0].id}`);
-      assert.deepEqual(registered[0].action.redirect.transform.queryTransform.addOrReplaceParams, [
-        { key: "prompt", value: "select_account" },
-      ]);
+      assert.equal(registered.length, 2, JSON.stringify(registered.map((r) => r.id)));
+      for (const rule of registered) {
+        assert.ok(rule.id >= 2000, `expected a site injection, got id ${rule.id}`);
+        assert.deepEqual(rule.action.redirect.transform.queryTransform.addOrReplaceParams, [
+          { key: "prompt", value: "select_account" },
+        ]);
+      }
     });
 
     // One stored account name, used by every site on direct sign-in (architecture.md §4.2).

@@ -14,11 +14,31 @@
 //       and needs no UPN at all
 //   A8  prompt and login_hint are mutually exclusive, per rule
 //
+// TWO PROTOCOLS, ONE SITE LIST
+//
+// A third-party relying party reaches ESTS over one of two protocols, and they
+// need opposite matching mechanisms (measured 2026-09-08, see below):
+//
+//   OIDC  GET /<tenant>/oauth2/[v2.0/]authorize?...   the portal host sits
+//         percent-encoded inside redirect_uri, so the URL identifies the site
+//         and condition.initiatorDomains is useless (a typed URL, a bookmark or
+//         a 302 chain carries no usable initiator — docs/architecture.md §4.2)
+//
+//   SAML  POST /<tenant>/saml2                        every SAML application of
+//         a tenant posts to this ONE URL with no query string at all, and the
+//         relying party sits deflate+base64-encoded in the request BODY, which
+//         DNR cannot read. Here the URL identifies nothing and the initiator is
+//         the only discriminator — the sign-on request is a form submit from the
+//         relying party's own page, which does have an initiator
+//
+// A configured domain therefore produces a pair of rules per protocol. The user
+// enters a site once; which mechanism recognises it is an implementation detail.
+//
 // THE PRIORITY MODEL (docs/architecture.md §4.1)
 //
-//   p1  base    broad authorize regex        -> the global default parameter
-//   p2  guard   per-site regex               -> action "allow"
-//   p3  inject  the SAME per-site regex      -> that site's parameter
+//   p1  base    broad endpoint condition     -> the global default parameter
+//   p2  guard   per-site condition           -> action "allow"
+//   p3  inject  the SAME per-site condition  -> that site's parameter
 //
 // In the "listed" global mode there is no p1, and then p2 is pointless as well:
 // a guard exists only to hold the base rule off a site. That configuration
@@ -36,12 +56,15 @@
 // parameter: that oscillates (base adds, site removes, base adds…) and ends in
 // ERR_TOO_MANY_REDIRECTS.
 
-/** Rule id of the global base rule. Stable, so sync replaces instead of accumulating. */
+/** Rule ids of the two global base rules. Stable, so sync replaces instead of accumulating. */
 export const RULE_ID = 1;
+export const SAML_RULE_ID = 2;
 
 /** Id ranges for the per-site rule pairs. Readable in a getDynamicRules() dump. */
 export const SITE_ALLOW_ID_BASE = 1000;
 export const SITE_RULE_ID_BASE = 2000;
+export const SAML_SITE_ALLOW_ID_BASE = 3000;
+export const SAML_SITE_RULE_ID_BASE = 4000;
 
 /**
  * Matches the ESTS authorize endpoint, v1 and v2, with a variable tenant segment.
@@ -55,6 +78,30 @@ export const SITE_RULE_ID_BASE = 2000;
  */
 export const AUTHORIZE_REGEX =
   "^https://login\\.microsoftonline\\.com/[^/]+/oauth2/(?:v2\\.0/)?authorize\\?";
+
+/**
+ * Matches the ESTS SAML sign-on endpoint — the one AWS and other SAML relying
+ * parties use.
+ *
+ * Deliberately NOT ending in `\?` the way AUTHORIZE_REGEX does. The SAML
+ * HTTP-POST binding, which is what the target environment's relying party uses,
+ * sends an auto-submitting form to a URL with **no query string at all** —
+ * measured 2026-09-08 against the live request. A pattern demanding `?` would
+ * never fire there.
+ *
+ * `(?:\?|$)` is the path-level equivalent of the host boundary in
+ * siteRegexFilter: it accepts the query-less POST form and the redirect-binding
+ * form (`/saml2?SAMLRequest=…`) while refusing `/saml2something`. RE2-safe (A2).
+ *
+ * Three properties had to be measured before this rule could exist, because
+ * each of them would otherwise corrupt a sign-in rather than augment it:
+ *   - queryTransform preserves percent-encoded values byte-for-byte, so the
+ *     base64+deflate AuthnRequest and a redirect-binding Signature survive
+ *   - a DNR redirect keeps the POST method AND the request body
+ *   - addOrReplaceParams creates the query string when there is none
+ * All three confirmed on Chromium 152 (docs/verification-matrix.md).
+ */
+export const SAML_REGEX = "^https://login\\.microsoftonline\\.com/[^/]+/saml2(?:\\?|$)";
 
 /**
  * Is this string safe to place into an authorize URL as a parameter value?
@@ -167,15 +214,43 @@ function redirectAction(param) {
 const condition = (regexFilter) => ({ regexFilter, resourceTypes: ["main_frame"] });
 
 /**
+ * Builds the condition that recognises a SAML sign-on request, optionally
+ * narrowed to one relying party.
+ *
+ * `initiatorDomains` is the mirror image of the OIDC site condition: there the
+ * URL carries the portal and the initiator is unusable, here the URL carries
+ * nothing and the initiator is all there is. The rejection of initiatorDomains
+ * in docs/architecture.md §4.2 stands — it was about browser-initiated
+ * navigations, and a SAML HTTP-POST binding is a form submit from the relying
+ * party's own page. Confirmed 2026-09-08, including across a 302 chain.
+ *
+ * Two consequences a reviewer has to know:
+ *   - initiatorDomains matches the domain AND its subdomains, while the OIDC
+ *     site condition is an exact host comparison. A listed `example.com`
+ *     therefore reaches `sso.example.com` for SAML but not for OIDC
+ *   - the domain to list is the origin that HOSTS THE FORM, which is not
+ *     necessarily the address the user typed (for AWS it is a signin host)
+ *
+ * No RE2 escaping here on purpose: initiatorDomains takes literal domains, not
+ * a pattern, so isValidDomain is the only boundary this path needs.
+ */
+const samlCondition = (domain) => ({
+  regexFilter: SAML_REGEX,
+  resourceTypes: ["main_frame"],
+  ...(domain ? { initiatorDomains: [domain] } : {}),
+});
+
+/**
  * Builds the dynamic rule set for a given configuration.
  *
  * Returns an empty array for anything short of an explicitly activated
  * configuration. Empty means the extension is inert — that is the normal,
  * correct state in the workforce profile and the reason force-install is safe.
  *
- * A configuration without a `sites` key produces exactly the rule this function
- * produced before per-site rules existed, with the same id and priority. That
- * is the migration guarantee: there is no migration code that could get it wrong.
+ * Every configuration yields its rules for BOTH protocols — the OIDC authorize
+ * endpoint and the SAML sign-on endpoint — from the same stored settings. The
+ * ids stay stable per protocol and band, so a getDynamicRules() dump can be read
+ * without a decoder ring and a sync replaces rather than accumulates.
  *
  * @param {{ enabled?: boolean, mode?: "picker"|"hint"|"listed", upn?: string,
  *           sites?: Array<{domain: string, mode: "picker"|"hint"|"off"}> }} config
@@ -197,6 +272,15 @@ export function buildRules(config) {
       priority: 1,
       action: redirectAction(baseParam),
       condition: condition(AUTHORIZE_REGEX),
+    });
+    // The same parameter, the other protocol. Without a relying party named, the
+    // SAML rule is deliberately unscoped: every SAML application of the tenant
+    // posts to the same URL, so "all of them" is the only global reach available.
+    rules.push({
+      id: SAML_RULE_ID,
+      priority: 1,
+      action: redirectAction(baseParam),
+      condition: samlCondition(),
     });
   }
   const hasBase = rules.length > 0;
@@ -229,6 +313,12 @@ export function buildRules(config) {
         action: { type: "allow" },
         condition: condition(regexFilter),
       });
+      rules.push({
+        id: SAML_SITE_ALLOW_ID_BASE + index,
+        priority: 2,
+        action: { type: "allow" },
+        condition: samlCondition(domain),
+      });
     }
     if (param) {
       rules.push({
@@ -236,6 +326,12 @@ export function buildRules(config) {
         priority: 3,
         action: redirectAction(param),
         condition: condition(regexFilter),
+      });
+      rules.push({
+        id: SAML_SITE_RULE_ID_BASE + index,
+        priority: 3,
+        action: redirectAction(param),
+        condition: samlCondition(domain),
       });
     }
     index++;

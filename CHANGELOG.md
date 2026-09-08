@@ -10,9 +10,32 @@ the reason this file exists.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
 follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.12.0] — 2026-09-08
 
-**Rules and permissions:** no change. Only the wording of the popup changed.
+**Rules: changed — new coverage. Permissions and hosts: no change.** A second
+endpoint is now matched, `login.microsoftonline.com/<tenant>/saml2`, on the same
+host the extension already had permission for. `permissions` and `host_permissions`
+in `src/manifest.json` are byte-identical. The injected parameters are unchanged:
+still only `prompt` or `login_hint`, still `queryTransform` only, still no
+`redirect.url` and no `regexSubstitution`.
+
+### Added
+
+- **SAML sign-ins are covered.** An application connected to the tenant through
+  SAML — AWS is the case that surfaced this — never touches the OIDC authorize
+  endpoint, so no rule applied to it and the user was signed in with whichever
+  account the browser already knew. Reported from real use on 2026-09-08.
+- **Per-site scoping works for SAML too**, so all three modes reach such an
+  application, including *only the sites I list*. It uses a different mechanism
+  than the OIDC side: the relying party is deflate+base64-encoded inside the
+  request body, unreachable for a URL pattern, so the rule matches on the host
+  that starts the sign-in (`condition.initiatorDomains`). One site list, two
+  mechanisms — nothing changes in how a site is entered.
+
+  Two consequences are named in the popup and in `docs/architecture.md` §3.2
+  rather than smoothed over: the host to list is the origin that serves the
+  sign-in form, which is often **not** the address the user types, and
+  `initiatorDomains` includes subdomains where the OIDC match is an exact host.
 
 ### Changed
 

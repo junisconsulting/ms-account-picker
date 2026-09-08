@@ -108,12 +108,26 @@ Demonstrated on 2026-08-18: two packs byte-identical, and identical again after 
 
 | Version | Date | SHA-256 of the ZIP | Store item state | Approved by |
 | --- | --- | --- | --- | --- |
+| 0.12.0 | 2026-09-08 | `c69c652b29dc2027794b26baa960e29211050ed6146938391ead16e4d0b603d2` | **packaged, not uploaded** — blocked on V7 (`verification-matrix.md`): the picker mode's effect at the SAML endpoint is unmeasured | Claude + D. H. |
 | 0.11.1 | 2026-08-19 | `0e58f6e12113b7b7921e22abb53da186100f345c2f9cddfe2b95bfda59267b69` | **published** — the version the store serves (confirmed 2026-08-23) | Claude + D. H. |
 | 0.11.0 | 2026-08-19 | `67234c46219da7f86efca953b2b40436d7241f04be7551a177a8a7fe8a947b4d` | published 2026-08-20, superseded by 0.11.1 | Claude + D. H. |
 | 0.10.0 | 2026-08-18 | `2615f8061ae40c758e1e8a18f11a68e0ee0d5901bb055cfc41f79248d5dd3bc6` | packaged, not uploaded | Claude + D. H. |
 | 0.9.0 | 2026-08-18 | `cfa69712a45708f6f0cc0fb3d0cd200281eee9847cdfb937f24d16b0386b4e69` | packaged, not uploaded | Claude + D. H. |
 
 Every uploaded version is recorded here. A version without an entry is not approved.
+
+**Never build a test artefact from an unbumped working tree.** `tools/package.py`
+names the archive after the version in `src/manifest.json`, so running it while
+that version is still the released one writes `build/ms-account-picker-<released>.zip`
+with different content — same filename, same version, a hash that no longer matches
+the register. Anyone verifying the register against that file reads it as a tampered
+release. Walked into on 2026-09-08 while packaging the SAML work for a local test.
+
+For a local test build, patch a **copy** of `src/` instead: give it a fourth version
+component (`0.11.1.1`) and a distinct `name`, and leave the repository untouched. The
+released artefact stays reproducible from its tag — `git archive v0.11.1 | tar -x` into
+a temporary directory, then `python3 tools/package.py`, verified on 2026-09-08 to
+reproduce `0e58f6e1…` byte for byte.
 
 ## 4. Rollout
 

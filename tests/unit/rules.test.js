@@ -14,9 +14,13 @@ import {
   isValidDomain,
   siteRegexFilter,
   RULE_ID,
+  SAML_RULE_ID,
   SITE_ALLOW_ID_BASE,
   SITE_RULE_ID_BASE,
+  SAML_SITE_ALLOW_ID_BASE,
+  SAML_SITE_RULE_ID_BASE,
   AUTHORIZE_REGEX,
+  SAML_REGEX,
 } from "../../src/lib/rules.js";
 
 const PICKER = { enabled: true, mode: "picker" };
@@ -25,6 +29,12 @@ const SITE = "make.powerautomate.com";
 
 const redirects = (rules) => rules.filter((r) => r.action.type === "redirect");
 const paramsOf = (rule) => rule.action.redirect.transform.queryTransform.addOrReplaceParams;
+
+// Every configuration now yields rules for two protocols. Splitting them keeps
+// each assertion about the band model readable, and keeps the OIDC statements
+// exactly as strong as they were before SAML existed.
+const oidc = (rules) => rules.filter((r) => r.condition.regexFilter !== SAML_REGEX);
+const saml = (rules) => rules.filter((r) => r.condition.regexFilter === SAML_REGEX);
 
 // --- A3: nothing configured, nothing registered -----------------------------
 
@@ -49,22 +59,35 @@ test("no rule unless explicitly activated in this profile", () => {
 // per-site rules existed. It must not be relaxed.
 
 test("picker mode injects prompt=select_account and needs no UPN", () => {
+  const pickerAction = {
+    type: "redirect",
+    redirect: {
+      transform: {
+        queryTransform: {
+          addOrReplaceParams: [{ key: "prompt", value: "select_account" }],
+        },
+      },
+    },
+  };
+
   assert.deepEqual(buildRules(PICKER), [
     {
       id: RULE_ID,
       priority: 1,
-      action: {
-        type: "redirect",
-        redirect: {
-          transform: {
-            queryTransform: {
-              addOrReplaceParams: [{ key: "prompt", value: "select_account" }],
-            },
-          },
-        },
-      },
+      action: pickerAction,
       condition: {
         regexFilter: AUTHORIZE_REGEX,
+        resourceTypes: ["main_frame"],
+      },
+    },
+    // The SAML twin. No initiatorDomains: unscoped is the only global reach a
+    // SAML rule can have, because every relying party posts to the same URL.
+    {
+      id: SAML_RULE_ID,
+      priority: 1,
+      action: pickerAction,
+      condition: {
+        regexFilter: SAML_REGEX,
         resourceTypes: ["main_frame"],
       },
     },
@@ -181,6 +204,81 @@ test("regexFilter matches the v1 and v2 authorize endpoints, and nothing else", 
   for (const url of shouldNotMatch) assert.ok(!re.test(url), `should not match: ${url}`);
 });
 
+test("SAML_REGEX matches the sign-on endpoint in both bindings, and nothing else", () => {
+  const re = new RegExp(SAML_REGEX, "i");
+
+  const shouldMatch = [
+    // The measured shape (2026-09-08): HTTP-POST binding, no query string at all.
+    // This is the case a pattern ending in `\?` would silently miss.
+    "https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000/saml2",
+    // HTTP-Redirect binding: the AuthnRequest travels in the query.
+    "https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000/saml2?SAMLRequest=fZJ%2BA%3D",
+    // After our own injection — it must still match, because that is what makes
+    // the redirect a no-op and stops the loop.
+    "https://login.microsoftonline.com/organizations/saml2?prompt=select_account",
+    "https://login.microsoftonline.com/contoso.onmicrosoft.com/saml2",
+  ];
+  const shouldNotMatch = [
+    // The boundary `(?:\?|$)` earns its place here: without it these match.
+    "https://login.microsoftonline.com/common/saml2sso",
+    "https://login.microsoftonline.com/common/saml2/extra",
+    // WS-Federation knows no prompt — still the documented gap (A9).
+    "https://login.microsoftonline.com/common/wsfed?wa=wsignin1.0",
+    // The other protocol has its own rule.
+    "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?a=b",
+    // Aliases are out of scope by decision (A7).
+    "https://login.windows.net/common/saml2",
+    // Anchored: no other host may reach the rule.
+    "https://evil.example/https://login.microsoftonline.com/common/saml2",
+    // The tenant segment is exactly one path segment.
+    "https://login.microsoftonline.com/a/b/saml2",
+  ];
+
+  for (const url of shouldMatch) assert.ok(re.test(url), `should match: ${url}`);
+  for (const url of shouldNotMatch) assert.ok(!re.test(url), `should not match: ${url}`);
+});
+
+test("the two base rules never both match the same request", () => {
+  // They inject the same parameter, so an overlap would not corrupt anything —
+  // but it would mean one of the two patterns is wider than its protocol, which
+  // is exactly the kind of drift a T0 rule set must not accumulate.
+  const authorize = new RegExp(AUTHORIZE_REGEX, "i");
+  const saml2 = new RegExp(SAML_REGEX, "i");
+
+  for (const url of [
+    "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize?client_id=x",
+    "https://login.microsoftonline.com/common/oauth2/authorize?client_id=x",
+    "https://login.microsoftonline.com/organizations/saml2",
+    "https://login.microsoftonline.com/organizations/saml2?SAMLRequest=x",
+  ]) {
+    assert.notEqual(authorize.test(url), saml2.test(url), `both or neither matched: ${url}`);
+  }
+});
+
+test("the SAML site condition works on the real shape of the AWS relying party", () => {
+  // Captured 2026-09-08 from the live request: AWS uses the HTTP-POST binding,
+  // and the origin that hosts the auto-submitting form is a signin host — NOT
+  // the address the admin types. Listing the wrong one is the likeliest
+  // configuration error, so the shape that works is pinned here.
+  const AWS_FORM_ORIGIN = "eu-central-1.signin.aws";
+  assert.ok(isValidDomain(AWS_FORM_ORIGIN), "the AWS form origin must be a listable domain");
+
+  const rules = buildRules({
+    enabled: true,
+    mode: "listed",
+    upn: HINT.upn,
+    sites: [{ domain: AWS_FORM_ORIGIN, mode: "hint" }],
+  });
+
+  // In listed mode this is the whole reach: one SAML injection, plus the OIDC
+  // twin that simply never matches for a SAML relying party.
+  const samlRules = saml(rules);
+  assert.equal(samlRules.length, 1);
+  assert.deepEqual(samlRules[0].condition.initiatorDomains, [AWS_FORM_ORIGIN]);
+  assert.deepEqual(paramsOf(samlRules[0]), [{ key: "login_hint", value: HINT.upn }]);
+  assert.deepEqual(samlRules[0].condition.resourceTypes, ["main_frame"]);
+});
+
 // --- the per-site condition -------------------------------------------------
 
 test("siteRegexFilter recognises the portal wherever redirect_uri sits", () => {
@@ -291,21 +389,30 @@ test("the site condition works on the real shape of the target portals", () => {
 
 test("an 'off' site gets a guard and nothing else", () => {
   const rules = buildRules({ ...PICKER, sites: [{ domain: SITE, mode: "off" }] });
-  assert.equal(rules.length, 2);
+  assert.equal(rules.length, 4);
 
-  const [base, guard] = rules;
+  const [base, guard] = oidc(rules);
   assert.equal(base.id, RULE_ID);
   assert.equal(guard.id, SITE_ALLOW_ID_BASE);
   assert.deepEqual(guard.action, { type: "allow" });
   assert.ok(guard.priority > base.priority, "the guard must outrank the base rule");
   assert.equal(guard.condition.regexFilter, siteRegexFilter(SITE));
+
+  // The SAML twin holds the same band model, scoped by initiator instead of URL.
+  const [samlBase, samlGuard] = saml(rules);
+  assert.equal(samlBase.id, SAML_RULE_ID);
+  assert.equal(samlGuard.id, SAML_SITE_ALLOW_ID_BASE);
+  assert.deepEqual(samlGuard.action, { type: "allow" });
+  assert.ok(samlGuard.priority > samlBase.priority, "the guard must outrank the base rule");
+  assert.deepEqual(samlGuard.condition.initiatorDomains, [SITE]);
+  assert.equal(samlBase.condition.initiatorDomains, undefined, "the base rule must stay unscoped");
 });
 
 test("a site with its own mode gets guard and injection sharing one condition", () => {
   const rules = buildRules({ ...PICKER, upn: HINT.upn, sites: [{ domain: SITE, mode: "hint" }] });
-  assert.equal(rules.length, 3);
+  assert.equal(rules.length, 6);
 
-  const [base, guard, inject] = rules;
+  const [base, guard, inject] = oidc(rules);
   assert.equal(guard.id, SITE_ALLOW_ID_BASE);
   assert.equal(inject.id, SITE_RULE_ID_BASE);
 
@@ -317,14 +424,23 @@ test("a site with its own mode gets guard and injection sharing one condition", 
   assert.ok(guard.priority > base.priority, "the guard must outrank the base rule");
   assert.deepEqual(paramsOf(inject), [{ key: "login_hint", value: HINT.upn }]);
   assert.deepEqual(paramsOf(base), [{ key: "prompt", value: "select_account" }]);
+
+  const [samlBase, samlGuard, samlInject] = saml(rules);
+  assert.equal(samlGuard.id, SAML_SITE_ALLOW_ID_BASE);
+  assert.equal(samlInject.id, SAML_SITE_RULE_ID_BASE);
+  // Same requirement, and here it covers initiatorDomains too: the guard must
+  // still match after the injection appended a parameter to the URL.
+  assert.deepEqual(samlGuard.condition, samlInject.condition);
+  assert.ok(samlInject.priority > samlGuard.priority);
+  assert.ok(samlGuard.priority > samlBase.priority);
+  assert.deepEqual(paramsOf(samlInject), [{ key: "login_hint", value: HINT.upn }]);
 });
 
 test("a hint site with no usable UPN falls back to the global default entirely", () => {
   // Not "the portal loses its protection" — it must land on the base rule, so
-  // neither the guard nor the injection may be emitted.
+  // neither the guard nor the injection may be emitted, in either protocol.
   const rules = buildRules({ ...PICKER, upn: "", sites: [{ domain: SITE, mode: "hint" }] });
-  assert.equal(rules.length, 1);
-  assert.equal(rules[0].id, RULE_ID);
+  assert.deepEqual(rules.map((rule) => rule.id), [RULE_ID, SAML_RULE_ID]);
 });
 
 test("with no base rule a site needs no guard", () => {
@@ -335,9 +451,10 @@ test("with no base rule a site needs no guard", () => {
     upn: "not-a-upn",
     sites: [{ domain: SITE, mode: "picker" }],
   });
-  assert.equal(rules.length, 1);
-  assert.equal(rules[0].id, SITE_RULE_ID_BASE);
-  assert.deepEqual(paramsOf(rules[0]), [{ key: "prompt", value: "select_account" }]);
+  assert.deepEqual(rules.map((rule) => rule.id), [SITE_RULE_ID_BASE, SAML_SITE_RULE_ID_BASE]);
+  for (const rule of rules) {
+    assert.deepEqual(paramsOf(rule), [{ key: "prompt", value: "select_account" }]);
+  }
 });
 
 test("hint mode produces no rule when the UPN is unusable", () => {
@@ -351,8 +468,9 @@ test("an unknown site mode falls back to the picker", () => {
   // that site off — it is narrowed to the picker like any other unknown value.
   for (const mode of [undefined, "", "PICKER", "nonsense", "listed"]) {
     const rules = buildRules({ ...PICKER, sites: [{ domain: SITE, mode }] });
-    assert.equal(rules.length, 3, `mode ${String(mode)}`);
-    assert.deepEqual(paramsOf(rules[2]), [{ key: "prompt", value: "select_account" }]);
+    assert.equal(rules.length, 6, `mode ${String(mode)}`);
+    assert.deepEqual(paramsOf(oidc(rules)[2]), [{ key: "prompt", value: "select_account" }]);
+    assert.deepEqual(paramsOf(saml(rules)[2]), [{ key: "prompt", value: "select_account" }]);
   }
 });
 
@@ -377,12 +495,19 @@ test("listed mode emits the site injections and no base rule", () => {
     sites: [{ domain: SITE, mode: "picker" }, { domain: "other.example", mode: "hint" }],
   });
 
-  // The id list carries it: no RULE_ID means no base rule, and with no base rule
-  // there is nothing for a guard to hold off — so no allow rule either.
-  assert.deepEqual(rules.map((rule) => rule.id), [SITE_RULE_ID_BASE, SITE_RULE_ID_BASE + 1]);
+  // The id list carries it: no RULE_ID and no SAML_RULE_ID means no base rule in
+  // either protocol, and with no base rule there is nothing for a guard to hold
+  // off — so no allow rule either.
+  assert.deepEqual(rules.map((rule) => rule.id), [
+    SITE_RULE_ID_BASE, SAML_SITE_RULE_ID_BASE,
+    SITE_RULE_ID_BASE + 1, SAML_SITE_RULE_ID_BASE + 1,
+  ]);
   assert.deepEqual(paramsOf(rules[0]), [{ key: "prompt", value: "select_account" }]);
-  assert.deepEqual(paramsOf(rules[1]), [{ key: "login_hint", value: HINT.upn }]);
+  assert.deepEqual(paramsOf(rules[2]), [{ key: "login_hint", value: HINT.upn }]);
   assert.equal(rules[0].condition.regexFilter, siteRegexFilter(SITE));
+  // The listed mode is the one that had no SAML answer before initiatorDomains:
+  // a listed relying party is reachable, an unlisted one is untouched.
+  assert.deepEqual(rules[1].condition.initiatorDomains, [SITE]);
 });
 
 test("listed mode leaves a site set to 'off' entirely alone", () => {
@@ -401,8 +526,9 @@ test("listed mode drops a hint site with no usable UPN instead of falling back",
     upn: "",
     sites: [{ domain: SITE, mode: "hint" }, { domain: "other.example", mode: "picker" }],
   });
-  assert.equal(rules.length, 1);
-  assert.equal(rules[0].condition.regexFilter, siteRegexFilter("other.example"));
+  assert.equal(rules.length, 2);
+  assert.equal(oidc(rules)[0].condition.regexFilter, siteRegexFilter("other.example"));
+  assert.deepEqual(saml(rules)[0].condition.initiatorDomains, ["other.example"]);
 });
 
 // --- one bad entry must never disarm the extension --------------------------
@@ -424,9 +550,10 @@ test("invalid domains are skipped while their valid siblings survive", () => {
       { domain: SITE, mode: "off" }, // the only good one
     ],
   });
-  assert.equal(rules.length, 2);
-  assert.equal(rules[0].id, RULE_ID);
-  assert.equal(rules[1].condition.regexFilter, siteRegexFilter(SITE));
+  assert.equal(rules.length, 4);
+  assert.equal(oidc(rules)[0].id, RULE_ID);
+  assert.equal(oidc(rules)[1].condition.regexFilter, siteRegexFilter(SITE));
+  assert.deepEqual(saml(rules)[1].condition.initiatorDomains, [SITE]);
 });
 
 test("domains are normalised and deduplicated, first occurrence wins", () => {
@@ -437,8 +564,12 @@ test("domains are normalised and deduplicated, first occurrence wins", () => {
       { domain: SITE, mode: "hint" }, // duplicate — must not add a second pair
     ],
   });
-  assert.equal(rules.length, 2);
-  assert.deepEqual(rules[1].action, { type: "allow" });
+  assert.equal(rules.length, 4);
+  assert.deepEqual(oidc(rules)[1].action, { type: "allow" });
+  assert.deepEqual(saml(rules)[1].action, { type: "allow" });
+  // Normalised for initiatorDomains too — a stored uppercase host must not
+  // produce a domain Chromium would never match.
+  assert.deepEqual(saml(rules)[1].condition.initiatorDomains, [SITE]);
 });
 
 // --- structural guards: the security-review checklist, executable ------------
@@ -474,17 +605,19 @@ test("every rule is either an allow or a queryTransform redirect", () => {
   }
 });
 
-test("every generated pattern is anchored on the ESTS authorize endpoint", () => {
+test("every generated pattern is anchored on an ESTS sign-on endpoint", () => {
   // A site rule must never be able to match anything the base rule would not
-  // match. Prefixing with AUTHORIZE_REGEX is what bounds the `.*` inside the
-  // site condition to a single ESTS authorize URL.
+  // match. For OIDC that is the AUTHORIZE_REGEX prefix, which bounds the `.*`
+  // inside the site condition to a single ESTS authorize URL. For SAML the site
+  // condition IS the base pattern — narrowing happens in initiatorDomains, not
+  // in the regex, so there is no `.*` to bound and nothing that could widen.
   const rules = buildRules({
     ...HINT,
     sites: [{ domain: SITE, mode: "picker" }, { domain: "other.example", mode: "off" }],
   });
   for (const { condition } of rules) {
     assert.ok(
-      condition.regexFilter.startsWith(AUTHORIZE_REGEX),
+      condition.regexFilter.startsWith(AUTHORIZE_REGEX) || condition.regexFilter === SAML_REGEX,
       `not anchored: ${condition.regexFilter}`,
     );
   }
@@ -534,6 +667,7 @@ test("isValidDomain rejects anything that could widen or break the pattern", () 
     "portal.azure.com",
     "a-b.sub.example.co.uk",
     "x1.y2.example",
+    "eu-central-1.signin.aws", // the AWS SAML form origin — digits and a short TLD
   ]) {
     assert.ok(isValidDomain(good), `must accept: ${good}`);
   }

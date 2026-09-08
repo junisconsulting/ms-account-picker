@@ -25,6 +25,8 @@ Two things sit alongside the mode:
 - **Per site.** A site you use with more than one account can keep the picker while everything else goes direct — or the other way round. A site can also be set to **Browser default**, which means this extension leaves it alone entirely.
 - **Off per profile.** The extension does nothing at all until you switch it on in *this* browser profile. That is what makes it safe to install everywhere and arm only where you want it — a profile that was never activated registers no rule.
 
+**Third-party applications too.** Not only Microsoft's own portals. An application connected to your tenant through SAML — AWS, for instance — signs in through the same Microsoft endpoint and is covered the same way. One wrinkle if you list such a site: it is matched on the host that *starts* the sign-in, which is often not the address you type.
+
 ## What it does not do
 
 No telemetry, no analytics, no error reporting — nothing leaves your browser. No account, no server. No remote code and no third-party libraries: zero dependencies. It has no access to the Microsoft portals themselves, only to the sign-in endpoint `login.microsoftonline.com`, and it never reads the content of any request.

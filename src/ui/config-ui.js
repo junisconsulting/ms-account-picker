@@ -92,7 +92,9 @@ const TEMPLATE = `
   <summary><span id="site-title"></span><span id="site-count"></span></summary>
   <small class="hint">A site you use with more than one account usually wants the picker,
     even where direct sign-in is set. Enter the exact host, like
-    <code>make.powerautomate.com</code> — a parent domain does not cover its subdomains.</small>
+    <code>make.powerautomate.com</code> — a parent domain does not cover its subdomains.
+    A site that signs in through SAML, such as AWS, is matched on the host that starts the
+    sign-in, and that host is often not the address you type.</small>
   <ul class="sites" id="site-list"></ul>
   <div class="addrow">
     <input type="text" id="site-domain" autocomplete="off" spellcheck="false"
