@@ -108,7 +108,7 @@ Demonstrated on 2026-08-18: two packs byte-identical, and identical again after 
 
 | Version | Date | SHA-256 of the ZIP | Store item state | Approved by |
 | --- | --- | --- | --- | --- |
-| 0.12.0 | 2026-09-08 | `c69c652b29dc2027794b26baa960e29211050ed6146938391ead16e4d0b603d2` | **packaged, not uploaded** — blocked on V7 (`verification-matrix.md`): the picker mode's effect at the SAML endpoint is unmeasured | Claude + D. H. |
+| 0.12.0 | 2026-09-08 | `c69c652b29dc2027794b26baa960e29211050ed6146938391ead16e4d0b603d2` | **packaged, not uploaded** — cleared for upload: V7 closed positively 2026-09-08, both modes confirmed against the real SAML relying party | Claude + D. H. |
 | 0.11.1 | 2026-08-19 | `0e58f6e12113b7b7921e22abb53da186100f345c2f9cddfe2b95bfda59267b69` | **published** — the version the store serves (confirmed 2026-08-23) | Claude + D. H. |
 | 0.11.0 | 2026-08-19 | `67234c46219da7f86efca953b2b40436d7241f04be7551a177a8a7fe8a947b4d` | published 2026-08-20, superseded by 0.11.1 | Claude + D. H. |
 | 0.10.0 | 2026-08-18 | `2615f8061ae40c758e1e8a18f11a68e0ee0d5901bb055cfc41f79248d5dd3bc6` | packaged, not uploaded | Claude + D. H. |

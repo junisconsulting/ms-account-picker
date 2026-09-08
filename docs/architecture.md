@@ -101,7 +101,9 @@ Two further asymmetries that are recorded rather than smoothed over:
 3. A pattern that does not demand `?` matches a query-less URL, and `addOrReplaceParams` creates the query string.
 4. `initiatorDomains` resolves for a cross-origin top-level form POST, including across a 302 chain into the form page.
 
-**What is still open:** whether ESTS *acts on* `prompt=select_account` at the SAML endpoint. `login_hint` is documented there ([SAML protocol reference](https://learn.microsoft.com/en-us/entra/identity-platform/single-sign-on-saml-protocol), *Subject*) and confirmed in the target environment on 2026-09-08 — it signed the admin account in seamlessly with both accounts holding live sessions. `prompt=select_account` is not documented for SAML and Microsoft contradicts it in [Force account picker with SAML login](https://learn.microsoft.com/en-us/answers/questions/2124556/force-account-picker-with-saml-login), while community reports claim it works. Carried as V7 in `verification-matrix.md` until the target environment answers it.
+**Both parameters were confirmed to take effect** *(2026-09-08, target environment, real AWS relying party)*. `login_hint` is documented for the SAML endpoint ([SAML protocol reference](https://learn.microsoft.com/en-us/entra/identity-platform/single-sign-on-saml-protocol), *Subject*) and signed the admin account in seamlessly. `prompt=select_account` produced the account chooser in the state where a silent workforce sign-in was the alternative — sessions ended through the sign-out link, browser restarted.
+
+⚠️ **The picker at SAML rests on undocumented behaviour, and that is a standing risk, not a footnote.** Microsoft does not document `prompt` for SAML and states the opposite in [Force account picker with SAML login](https://learn.microsoft.com/en-us/answers/questions/2124556/force-account-picker-with-saml-login). What is undocumented can be withdrawn without a deprecation notice, and the failure would be silent: the rule still fires, the parameter still arrives, and the relying party signs in with whatever account ESTS already knows. Direct sign-in is unaffected — `login_hint` is documented. Carried as Z13 in `verification-matrix.md`, to be re-checked before a ring change.
 
 ## 4. Components
 
@@ -212,6 +214,7 @@ The switch is not a fleet-level rollback path; that runs through the policy, see
 - 🟢 **The device claim survives — in both modes.** Verified manually in the sign-in log (2026-08-17). This clears the concept's central uncertainty: the extension does not break the device binding, and the device-claim CA does not block even in enforcement mode.
 - No redirect loop: Chromium does not execute a redirect to an identical URL. Proven automatically by `tests/e2e/dnr.e2e.js` (2026-08-17).
 - `host_permissions` on `login.microsoftonline.com` is sufficient — the rule applies even when the navigation starts from a foreign origin. Proven automatically (2026-08-17). The stop criterion from `security-review.md` §4 has therefore not been triggered.
+- 🟢 **Both parameters take effect at the SAML endpoint.** Confirmed 2026-09-08 for `prompt=select_account` too, in the state where a silent workforce sign-in was the alternative. Undocumented, and denied by Microsoft — the standing risk is in §3.2 and Z13.
 - 🟢 **SAML is reachable, and `login_hint` works there.** Confirmed in the target environment on 2026-09-08 against the real AWS relying party: with a rule scoped to the form's origin, the admin account was signed in seamlessly — while **both** accounts held live sessions, which without the rule produces the account picker. The four mechanical preconditions (M1–M4) were measured beforehand, so this was a confirmation rather than a discovery.
 - 🟡 **`login_hint` does not override a foreign PRT once the hinted account's session is gone.** Observed 2026-08-27 in real use (Azure portal, tab open overnight, F5 after 12–14 h): the rule fired, the hint was in the URL, and ESTS showed the account picker instead of signing the configured account in. While the hinted account's ESTS session is alive, the hint is honoured silently. That closes V3 — negatively for the silent case. Consequence in §5.1; the decision it forces is F10 in `open-questions.md`.
 
@@ -220,7 +223,6 @@ The switch is not a fleet-level rollback path; that runs through the policy, see
 | Assumption | Verification | Consequence if negative |
 | --- | --- | --- |
 | `prompt=select_account` + `login_hint` preselects the account in the picker | Manually, by adding both parameters to an authorize URL | None — the picker simply stays without preselection |
-| **V7** — `prompt=select_account` takes effect at the SAML endpoint | A temporary rule in the target environment, in the state where the workforce PRT would otherwise sign in silently | The picker mode leaves SAML relying parties alone and that becomes a documented gap alongside A9. `login_hint` is unaffected — it is documented for SAML and confirmed |
 
 ## 8. References
 
