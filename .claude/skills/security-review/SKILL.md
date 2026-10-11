@@ -32,7 +32,7 @@ git diff src/manifest.json
 - [ ] No `web_accessible_resources`
 - [ ] No `externally_connectable`
 - [ ] `content_security_policy` not weakened (no `unsafe-eval`, no remote origins)
-- [ ] `version` bumped, and the bump is intentional (the deployment policy pins versions)
+- [ ] `version` bumped, and the bump is intentional — the store auto-updates every profile and nothing can pin a version (`CLAUDE.md` security rule 4), so the number and the changelog entry are the customer's only signal
 - [ ] No `key` field committed — the CRX signing key never enters the repo
 
 ## 2. Rule action — the token-theft check 🔴
@@ -64,7 +64,7 @@ The single most dangerous class of change in this repository.
 
 - [ ] Zero runtime dependencies — still zero. Adding one requires an explicit user decision, and an extension in the auth path of T0 accounts should have none
 - [ ] Build remains reproducible; the artifact hash procedure in `docs/deployment.md` still applies (and the documented hash is updated if the artifact changed)
-- [ ] Version in the `ExtensionSettings` policy stays pinned — never suggest auto-update
+- [ ] The `ExtensionSettings` policy still carries `minimum_version_required` (a floor against downgrades, never above what the store serves), and rollback is still `installation_mode: blocked` — never a pinned or previous version, which does not exist (`CLAUDE.md` security rule 4)
 
 ## Output format
 
