@@ -46,6 +46,15 @@ The target browser is Edge, the store is Google's. Two documented conditions app
 
 If neither holds, the fallback is a second listing in the Edge Add-ons store — which produces a **different extension ID** and therefore a second policy entry and a second review.
 
+### 1.4 "Not trusted by Enhanced Safe Browsing" in Chrome
+
+Chrome with Enhanced Safe Browsing turned on labels the item *"This extension is not trusted by Enhanced Safe Browsing"* (observed 2026-10-11 on 0.12.0). The label rates the **developer account**, not the package. Google counts an extension as trusted once its developer has followed the Developer Program Policies for "at least a few months". The item was created on 2026-08-19 (§2), so the label is expected to disappear without action. Google documents no request or appeal that speeds this up, and nothing in `src/` changes it.
+
+- **Edge is not expected to show it.** Enhanced Safe Browsing is a Chrome feature; Edge uses SmartScreen. *Assumption, not yet checked on `edge://extensions`.*
+- **Do not move the item to an older, already trusted publisher account to clear the label.** Nobody has confirmed that it works, and it changes who can ship updates to a T0 influence path. That makes it a security decision (`security-review.md` §7), not cosmetics.
+
+A customer reviewer who sees the label in Chrome should read it as "new publisher", not as a security finding.
+
 ## 2. Distribution
 
 **Item identity.** Extension ID `bapkfcamfgmaoaedkdljdmgpedpffjen`, assigned by the Chrome Web Store when the item was created on 2026-08-19. It is stable for the life of that item; a second listing, for instance in the Edge Add-ons store, produces a different one (§1.3).
