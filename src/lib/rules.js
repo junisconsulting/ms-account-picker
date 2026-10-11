@@ -39,6 +39,9 @@
 //   p1  base    broad endpoint condition     -> the global default parameter
 //   p2  guard   per-site condition           -> action "allow"
 //   p3  inject  the SAME per-site condition  -> that site's parameter
+//   p4  yield   the portal sent its own hint
+//               as `login%5Fhint`            -> action "allow" (ENCODED_HINT_REGEX),
+//               global direct sign-in only
 //
 // In the "listed" global mode there is no p1, and then p2 is pointless as well:
 // a guard exists only to hold the base rule off a site. That configuration
@@ -59,6 +62,9 @@
 /** Rule ids of the two global base rules. Stable, so sync replaces instead of accumulating. */
 export const RULE_ID = 1;
 export const SAML_RULE_ID = 2;
+
+/** Rule id of the p4 guard that yields to a portal's percent-encoded hint. */
+export const ENCODED_HINT_ALLOW_ID = 3;
 
 /** Id ranges for the per-site rule pairs. Readable in a getDynamicRules() dump. */
 export const SITE_ALLOW_ID_BASE = 1000;
@@ -102,6 +108,29 @@ export const AUTHORIZE_REGEX =
  * All three confirmed on Chromium 152 (docs/verification-matrix.md).
  */
 export const SAML_REGEX = "^https://login\\.microsoftonline\\.com/[^/]+/saml2(?:\\?|$)";
+
+/**
+ * Matches an authorize request on which the portal already names the account
+ * itself, spelled `login%5Fhint=` — the underscore percent-encoded.
+ *
+ * ESTS decodes a parameter NAME before comparing it; DNR compares it byte for
+ * byte. SharePoint encodes every `_` in a name (`client%5Fid`, `redirect%5Furi`,
+ * `login%5Fhint`), and its admin center forwards the signed-in user as a hint
+ * when it switches to another geo. addOrReplaceParams does not recognise that
+ * spelling as `login_hint`, appends a second one, and ESTS rejects the request:
+ * AADSTS9000411 "The parameter 'login_hint' is duplicated". Measured 2026-10-11
+ * against Chromium 152 and against ESTS (docs/verification-matrix.md M5).
+ *
+ * Replacing the portal's copy is not available: removeParams does not reach an
+ * encoded name under either spelling (measured), and regexSubstitution is ruled
+ * out. So the request is left exactly as the portal built it.
+ *
+ * Matched case-insensitively — the DNR default — so `%5F` and `%5f` alike.
+ * `(?:.*&)?` keeps the match on a parameter boundary, as in siteRegexFilter.
+ * The plain `login_hint=` does not match: addOrReplaceParams replaces that one,
+ * and keeps doing so.
+ */
+export const ENCODED_HINT_REGEX = AUTHORIZE_REGEX + "(?:.*&)?login%5fhint=";
 
 /**
  * Is this string safe to place into an authorize URL as a parameter value?
@@ -335,6 +364,19 @@ export function buildRules(config) {
       });
     }
     index++;
+  }
+
+  // Global direct sign-in only: the p4 yield, above every other band so it holds
+  // off the base rule and site injections alike (see ENCODED_HINT_REGEX). Never
+  // under the global picker — the picker is the baseline (A8), and no site rule
+  // can meet SharePoint's request anyway (docs/open-questions.md F12).
+  if (baseParam?.key === "login_hint") {
+    rules.push({
+      id: ENCODED_HINT_ALLOW_ID,
+      priority: 4,
+      action: { type: "allow" },
+      condition: condition(ENCODED_HINT_REGEX),
+    });
   }
 
   return rules;

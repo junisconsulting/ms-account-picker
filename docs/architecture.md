@@ -138,13 +138,14 @@ The SAML pattern deliberately does **not** end in `\?`. The HTTP-POST binding po
 
 ### 4.2 Per-site rules
 
-One global default plus exceptions per portal. Three priority bands:
+One global default plus exceptions per portal. Three priority bands, and a fourth that only steps aside:
 
 | Band | Priority | Rule | When |
 | --- | --- | --- | --- |
 | Base | 1 | broad authorize regex → the global default parameter | activated, unless the global mode is *only the sites I list* |
 | Site guard | 2 | site regex → `action: "allow"` | for **every** configured site |
 | Site injection | 3 | the **identical** site regex → that site's parameter | site mode ≠ `off` |
+| Hint yield | 4 | authorize regex + `login%5Fhint=` → `action: "allow"` | the global mode is direct sign-in |
 
 **How the portal is recognised — for OIDC.** Not by the initiator: `condition.initiatorDomains` is unusable *there*, because a browser-initiated navigation — a typed URL, a bookmark, history — has **no** initiator, and an HTTP 302 keeps the *original* initiator rather than the redirecting portal (Chromium sources `url_pattern_index.cc`, `navigation_params.mojom`). Filtering on that basis would work sporadically, which is worse than not at all.
 
@@ -159,6 +160,8 @@ Measured (2026-08-17): **Chromium does not fall through.** With the guard rule r
 With no base rule — the *only the sites I list* mode — no guard is emitted either. A guard exists solely to hold the base rule off a site, so without one it would be dead weight in the rule set.
 
 **One account name, not one per site.** Every rule that injects `login_hint` — the global one and every per-site one — reads the same stored value. A per-site account was considered and not built: it would multiply the trust boundary of `isValidUpn` across an unbounded list for a need nobody has stated. The consequence for the UI is that the field belongs to the profile rather than to the global mode, and is offered whenever direct sign-in appears anywhere in the configuration.
+
+**Why a fourth band** *(2026-10-11)*. ESTS compares parameter names case-insensitively and percent-decoded; DNR compares them byte for byte. SharePoint encodes every `_` in a name and, when its admin center switches geo, forwards the signed-in user as `login%5Fhint`. `addOrReplaceParams` does not recognise that as `login_hint`, appends a second one, and ESTS refuses the sign-in with `AADSTS9000411`. Replacing the portal's copy is not available — `removeParams` reaches an encoded name under neither spelling (measured), and `regexSubstitution` is ruled out — so the extension steps aside on that request: the portal's hint stands, and the account is the one the portal names. The plain `login_hint=` still gets replaced as before. The band exists only under global direct sign-in. Under the global picker it is never emitted, hint sites or not: the picker stays the baseline (A8), and no site rule can meet SharePoint's request anyway (`open-questions.md` F12). A hint site under the global picker or *only the sites I list* therefore has no yield — no portal is known that sends `login%5Fhint` next to a plain `redirect_uri`. **Not covered:** any other spelling ESTS decodes to the same name — a case variant such as `Login_Hint`, or another encoded character (`login_hin%74`). Each collides the same way, but no portal is known to send one, and a guard wide enough to catch them all would also catch the plain spelling and stop replacing it. → `verification-matrix.md` M5, Z14.
 
 **Rejected:** using `removeParams` to make the base rule and the site rule mutually exclusive. That oscillates — the base sets the parameter, the site rule removes it, and the flow ends in `ERR_TOO_MANY_REDIRECTS`. It is recorded as a named trap in `dnr-rule-check`.
 
@@ -212,6 +215,7 @@ The switch is not a fleet-level rollback path; that runs through the policy, see
 - The real request uses `/organizations/`, not `/common/` → the tenant segment in the regex has to be variable.
 - Pre-built URLs fail on PKCE and single-use `state`.
 - 🟢 **The device claim survives — in both modes.** Verified manually in the sign-in log (2026-08-17). This clears the concept's central uncertainty: the extension does not break the device binding, and the device-claim CA does not block even in enforcement mode.
+- ESTS reads parameter names case-insensitively and percent-decoded — `Login_Hint` or `login%5Fhint` next to `login_hint` is a duplicate (`AADSTS9000411`). DNR's `queryTransform` compares names byte for byte. Measured 2026-10-11; consequence in §4.2, fourth band.
 - No redirect loop: Chromium does not execute a redirect to an identical URL. Proven automatically by `tests/e2e/dnr.e2e.js` (2026-08-17).
 - `host_permissions` on `login.microsoftonline.com` is sufficient — the rule applies even when the navigation starts from a foreign origin. Proven automatically (2026-08-17). The stop criterion from `security-review.md` §4 has therefore not been triggered.
 - 🟢 **Both parameters take effect at the SAML endpoint.** Confirmed 2026-09-08 for `prompt=select_account` too, in the state where a silent workforce sign-in was the alternative. Undocumented, and denied by Microsoft — the standing risk is in §3.2 and Z13.

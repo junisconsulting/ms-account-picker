@@ -23,6 +23,12 @@ Two places a second pair of eyes could sit:
 
 Not decided here, because it changes how people work, not the code.
 
+### F12 — A per-site entry can never recognise SharePoint
+
+Found 2026-10-11 while fixing the geo-switch failure. SharePoint percent-encodes every `_` and `.` it writes into the authorize URL: the parameter arrives as `redirect%5Furi=https%3A%2F%2F<tenant>%2Esharepoint%2Ecom%2F…`. The OIDC site condition looks for a literal `redirect_uri=` followed by the host with plain dots (`siteRegexFilter`), so a SharePoint host in the site list never matches: in picker or direct sign-in the global default applies anyway, and in *only the sites I list* SharePoint is silently left alone.
+
+Making the condition accept the encoded forms is a change to a rule condition — security review, matrix run — and widens the RE2 surface. Whether SharePoint needs per-site handling at all is the open point; until someone needs it, the limit belongs in the UI/README wording at most.
+
 ## Decided
 
 ### F9 — Version control on the store route → auto-update accepted *(2026-08-18)*

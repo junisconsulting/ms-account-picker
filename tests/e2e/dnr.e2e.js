@@ -449,6 +449,16 @@ try {
     assert.doesNotMatch(e4[0], /[?&]login_hint=/);
   });
 
+  // SharePoint sends the hint as login%5Fhint (verification-matrix.md M5). The
+  // global hint rule from E4 is still armed here; the p4 yield must win.
+  console.log("\nE4b — a portal's own percent-encoded login_hint is left alone");
+  const encodedHint = authorizeFor(SITE_B, "&login%5Fhint=other%40contoso.com");
+  const e4b = authorizeOnly(await navigate(devtoolsPort, encodedHint));
+  await check("one request, exactly as the portal built it — no second hint", () => {
+    assert.equal(e4b.length, 1, `saw ${e4b.length}: ${e4b.join(" | ")}`);
+    assert.equal(e4b[0], encodedHint.replace("https://login.microsoftonline.com", ""));
+  });
+
   console.log("\nE5 — A1 holds under the per-site model");
   const beforeFramedSite = seen.length;
   await navigate(devtoolsPort, "https://portal.test/iframe?site");
@@ -723,12 +733,14 @@ try {
     await sleep(400);
     await check("a valid admin account produces the login_hint rules", async () => {
       const registered = await rules();
-      assert.equal(registered.length, 2, JSON.stringify(registered.map((r) => r.id)));
-      for (const rule of registered) {
+      // Both base rules, plus the allow that yields to a portal's encoded hint.
+      assert.equal(registered.length, 3, JSON.stringify(registered.map((r) => r.id)));
+      for (const rule of registered.filter((r) => r.action.type === "redirect")) {
         assert.deepEqual(rule.action.redirect.transform.queryTransform.addOrReplaceParams, [
           { key: "login_hint", value: UPN },
         ]);
       }
+      assert.equal(registered.filter((r) => r.action.type === "allow").length, 1);
     });
 
     // Chrome caps an action popup at 800x600 and scrolls past that. This is the
@@ -752,7 +764,7 @@ try {
     await sleep(400);
     await check("adding a site exception adds its guard and injection", async () => {
       const registered = await rules();
-      assert.equal(registered.length, 6, JSON.stringify(registered.map((r) => r.id)));
+      assert.equal(registered.length, 7, JSON.stringify(registered.map((r) => r.id)));
       assert.equal(await page.evaluate("document.querySelectorAll('#site-list .site').length"), 1);
       assert.equal(
         await page.evaluate("document.querySelector('#site-list .dom').textContent"),
@@ -765,13 +777,13 @@ try {
                  document.getElementById('site-add').click();`);
       await sleep(300);
       assert.match(await text("status"), /plain domain/);
-      assert.equal((await rules()).length, 6);
+      assert.equal((await rules()).length, 7);
     });
 
     await check("removing the site removes its rules again", async () => {
       await set("document.querySelector('#site-list .rm').click();");
       await sleep(400);
-      assert.equal((await rules()).length, 2);
+      assert.equal((await rules()).length, 3);
     });
 
     // The inverted mode. Its failure direction is the opposite of every other

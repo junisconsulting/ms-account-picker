@@ -10,6 +10,23 @@ the reason this file exists.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
 follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+**Rules: changed — one rule added, only ever suppresses. Permissions and hosts: no
+change.** When direct sign-in is the global mode, a new `allow` rule (priority 4)
+leaves an authorize request alone when the portal already names the account as
+`login%5Fhint`. It adds no parameter and touches no other request. Profiles in
+picker mode or *only the sites I list* do not get it — their rules are unchanged.
+
+### Fixed
+
+- **SharePoint admin center: switching geo no longer fails with `AADSTS9000411`
+  ("The parameter 'login_hint' is duplicated").** SharePoint forwards the signed-in
+  user as `login%5Fhint` (underscore percent-encoded). The browser's rule engine
+  did not recognise that spelling, so direct sign-in appended a second hint and
+  Microsoft refused the request. The extension now steps aside on such a request,
+  and the account is the one SharePoint names. Reported from real use on 2026-09-30.
+
 ## [0.12.0] — 2026-09-08
 
 **Rules: changed — new coverage. Permissions and hosts: no change.** A second

@@ -21,6 +21,8 @@ import {
   SAML_SITE_RULE_ID_BASE,
   AUTHORIZE_REGEX,
   SAML_REGEX,
+  ENCODED_HINT_ALLOW_ID,
+  ENCODED_HINT_REGEX,
 } from "../../src/lib/rules.js";
 
 const PICKER = { enabled: true, mode: "picker" };
@@ -570,6 +572,69 @@ test("domains are normalised and deduplicated, first occurrence wins", () => {
   // Normalised for initiatorDomains too — a stored uppercase host must not
   // produce a domain Chromium would never match.
   assert.deepEqual(saml(rules)[1].condition.initiatorDomains, [SITE]);
+});
+
+// --- the p4 yield (ENCODED_HINT_REGEX, verification-matrix.md M5) -----------
+
+test("global direct sign-in yields to a portal's encoded hint, nothing else does", () => {
+  const yieldRule = {
+    id: ENCODED_HINT_ALLOW_ID,
+    priority: 4,
+    action: { type: "allow" },
+    condition: { regexFilter: ENCODED_HINT_REGEX, resourceTypes: ["main_frame"] },
+  };
+  const hintConfigs = [
+    HINT,
+    { ...HINT, sites: [{ domain: SITE, mode: "picker" }, { domain: "other.example", mode: "off" }] },
+    { ...HINT, sites: [{ domain: SITE, mode: "hint" }] },
+  ];
+  for (const config of hintConfigs) {
+    const rules = buildRules(config);
+    assert.deepEqual(rules.filter((r) => r.id === ENCODED_HINT_ALLOW_ID), [yieldRule]);
+    // It has to outrank every rule that could inject — base and site alike.
+    for (const rule of rules) {
+      if (rule.id !== ENCODED_HINT_ALLOW_ID) assert.ok(rule.priority < yieldRule.priority);
+    }
+  }
+
+  // Never under the global picker or the listed mode — not even with a hint site:
+  // the picker stays the baseline (A8).
+  const otherConfigs = [
+    PICKER,
+    { ...PICKER, sites: [{ domain: SITE, mode: "off" }] },
+    { ...PICKER, upn: HINT.upn, sites: [{ domain: SITE, mode: "hint" }] },
+    { enabled: true, mode: "listed", upn: HINT.upn, sites: [{ domain: SITE, mode: "hint" }] },
+  ];
+  for (const config of otherConfigs) {
+    assert.ok(!buildRules(config).some((r) => r.id === ENCODED_HINT_ALLOW_ID));
+  }
+});
+
+test("ENCODED_HINT_REGEX matches the encoded spelling only, on a parameter boundary", () => {
+  const re = new RegExp(ENCODED_HINT_REGEX, "i");
+  // The shape SharePoint sends (2026-10-11): every `_` in a name encoded,
+  // the dots in values too. Placeholder tenant and host.
+  const sharepoint =
+    "https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000/oauth2/authorize" +
+    "?client%5Fid=00000003%2D0000%2D0ff1%2Dce00%2D000000000000&response%5Fmode=form%5Fpost" +
+    "&redirect%5Furi=https%3A%2F%2Fcontoso%2Esharepoint%2Ecom%2F%5Fforms%2Fdefault%2Easpx" +
+    "&login%5Fhint=admin%40contoso%2Ecom&wsucxt=1";
+  const v2 = "https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize";
+  const shouldMatch = [
+    sharepoint,
+    `${v2}?login%5Fhint=admin%40contoso.com&client_id=x`, // first parameter
+    `${v2}?client_id=x&login%5fhint=admin%40contoso.com`, // lowercase hex
+  ];
+  const shouldNotMatch = [
+    // The plain spelling: addOrReplaceParams replaces it, so it must stay injectable.
+    `${v2}?client_id=x&login_hint=admin%40contoso.com`,
+    sharepoint.replace("&login%5Fhint=admin%40contoso%2Ecom", ""),
+    // Not on a parameter boundary.
+    `${v2}?client_id=x&xlogin%5Fhint=a`,
+    `${v2}?client_id=x&state=login%5Fhint%3Da`,
+  ];
+  for (const url of shouldMatch) assert.ok(re.test(url), `should match: ${url}`);
+  for (const url of shouldNotMatch) assert.ok(!re.test(url), `should not match: ${url}`);
 });
 
 // --- structural guards: the security-review checklist, executable ------------
