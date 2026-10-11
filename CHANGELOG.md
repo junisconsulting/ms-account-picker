@@ -10,7 +10,7 @@ the reason this file exists.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions
 follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.13.0] — 2026-10-11
 
 **Rules: changed — one rule added, only ever suppresses. Permissions and hosts: no
 change.** When direct sign-in is the global mode, a new `allow` rule (priority 4)

@@ -117,6 +117,7 @@ Demonstrated on 2026-08-18: two packs byte-identical, and identical again after 
 
 | Version | Date | SHA-256 of the ZIP | Store item state | Approved by |
 | --- | --- | --- | --- | --- |
+| 0.13.0 | 2026-10-11 | `5b43739b09e84bfe9c61a5c52df54f28eeb8fbb8e499a81eab0434347a61768f` | **packaged, not uploaded** — hint yield (SharePoint geo switch, Z14 confirmed manually on the test build) | Claude + D. H. |
 | 0.12.0 | 2026-09-08 | `c69c652b29dc2027794b26baa960e29211050ed6146938391ead16e4d0b603d2` | **published** — the version the store serves (confirmed 2026-10-11 in the dashboard). Cleared for upload: V7 closed positively 2026-09-08, both modes confirmed against the real SAML relying party | Claude + D. H. |
 | 0.11.1 | 2026-08-19 | `0e58f6e12113b7b7921e22abb53da186100f345c2f9cddfe2b95bfda59267b69` | published, confirmed 2026-08-23, superseded by 0.12.0 | Claude + D. H. |
 | 0.11.0 | 2026-08-19 | `67234c46219da7f86efca953b2b40436d7241f04be7551a177a8a7fe8a947b4d` | published 2026-08-20, superseded by 0.11.1 | Claude + D. H. |
