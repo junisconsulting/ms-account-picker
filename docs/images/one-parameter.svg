@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 546" width="960" height="546">
+  <title>The sign-in request is built entirely by the portal's own sign-in library; MS Account Picker adds one parameter to it — prompt=select_account, or login_hint for direct sign-in — and changes nothing else.</title>
+  <!-- An illustration, not a screenshot: account names are Microsoft's fictional ones.
+       The request follows the Azure portal shape in tests/unit/rules.test.js ("the site condition
+       works on the real shape of the target portals"), values elided; the added line follows
+       src/lib/rules.js. Keep them in step when the rule changes.
+       'Direct sign-in' is MODE_LABEL.hint in src/ui/config-ui.js. -->
+  <style>
+    text { font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; }
+    .mono, .mono text { font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace; }
+    .h { font-size: 15px; font-weight: 600; fill: #0F172A; }
+    .s { font-size: 12.5px; fill: #64748B; }
+    .b { font-size: 13px; fill: #334155; }
+    .lead { font-size: 13px; font-weight: 600; fill: #0F172A; }
+    .step { font-size: 13px; fill: #334155; }
+    .n { font-size: 11.5px; font-weight: 600; text-anchor: middle; }
+    .code { font-size: 13px; fill: #334155; }
+    .el { fill: #64748B; }
+    .on { font-weight: 600; fill: #061838; }
+    .alt { fill: #64748B; }
+    .tag { font-size: 10.5px; font-weight: 600; fill: #475569; text-anchor: middle; }
+    .tagbox { fill: #FFFFFF; stroke: #CBD5E1; }
+  </style>
+  <defs>
+    <!-- The junis mark, the three paths of assets/logo/mark.svg unchanged -->
+    <g id="mark">
+      <g transform="translate(256 256) scale(1.13) translate(-256 -256)">
+        <path d="M256 292 C256 214 332 158 404 136" fill="none" stroke="#fcd218" stroke-width="88" stroke-linecap="round"/>
+        <path d="M256 292 C256 214 180 158 108 136" fill="none" stroke="#061838" stroke-width="88" stroke-linecap="round"/>
+        <path d="M256 376 L256 288" fill="none" stroke="#061838" stroke-width="88" stroke-linecap="round"/>
+      </g>
+    </g>
+    <path id="chev" d="M0 0 l5 5 l-5 5" fill="none" stroke="#94A3B8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </defs>
+  <rect x="0.5" y="0.5" width="959" height="545" rx="16" fill="#F8FAFC" stroke="#E2E8F0"/>
+
+  <!-- Three steps: only the middle one is the extension's -->
+  <circle cx="54" cy="42" r="10" fill="#F1F5F9" stroke="#CBD5E1"/>
+  <text x="54" y="46" class="n" fill="#475569">1</text>
+  <text x="72" y="47" class="step">The portal builds the request</text>
+  <use href="#chev" x="294" y="37"/>
+  <circle cx="366" cy="42" r="10" fill="#061838"/>
+  <text x="366" y="46" class="n" fill="#FFFFFF">2</text>
+  <text x="384" y="47" class="step on">The extension adds one parameter</text>
+  <use href="#chev" x="657" y="37"/>
+  <circle cx="729" cy="42" r="10" fill="#F1F5F9" stroke="#CBD5E1"/>
+  <text x="729" y="46" class="n" fill="#475569">3</text>
+  <text x="747" y="47" class="step">Microsoft asks which account</text>
+
+  <!-- The request card -->
+  <rect x="24" y="72" width="912" height="450" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="44" y="104" class="h">The sign-in request on its way to Microsoft</text>
+  <text x="44" y="123" class="s">the shape portal.azure.com sends from the admin profile · abridged, values shortened to …</text>
+  <path d="M44 140 H916" stroke="#EEF2F7"/>
+
+  <rect x="44" y="156" width="872" height="322" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <g class="code mono">
+    <text x="56" y="184">login.microsoftonline.com/organizations/oauth2/v2.0/authorize</text>
+    <text x="72" y="206">?client_id=<tspan class="el">…</tspan></text>
+    <text x="72" y="228">&amp;scope=<tspan class="el">…</tspan></text>
+    <text x="72" y="250">&amp;redirect_uri=https%3A%2F%2Fportal.azure.com%2F<tspan class="el">…</tspan></text>
+    <text x="72" y="272">&amp;response_mode=<tspan class="el">…</tspan></text>
+    <text x="72" y="294">&amp;nonce=<tspan class="el">…</tspan></text>
+    <text x="72" y="316">&amp;state=<tspan class="el">…</tspan></text>
+    <text x="72" y="338">&amp;response_type=code</text>
+    <text x="72" y="360">&amp;code_challenge=<tspan class="el">…</tspan></text>
+    <text x="72" y="382">&amp;code_challenge_method=S256</text>
+  </g>
+  <rect x="146" y="303" width="72" height="18" rx="9" class="tagbox"/>
+  <text x="182" y="316" class="tag">single-use</text>
+  <rect x="214" y="347" width="48" height="18" rx="9" class="tagbox"/>
+  <text x="238" y="360" class="tag">PKCE</text>
+
+  <!-- Bracket over the parameters the portal built -->
+  <path d="M546 192 H552 V388 H546 M552 207 H558" fill="none" stroke="#CBD5E1" stroke-width="1.5"/>
+  <text x="566" y="212" class="h">Built by the portal</text>
+  <text x="566" y="231" class="s">by its own sign-in library, MSAL.js</text>
+  <text x="566" y="262" class="lead">Why not a ready-made sign-in link?</text>
+  <text x="566" y="281" class="b"><tspan class="mono" font-size="12.5">state</tspan> is single-use, and PKCE ties the</text>
+  <text x="566" y="300" class="b">returned code to the page that asked. Only the</text>
+  <text x="566" y="319" class="b">portal can build it, so the extension adds to</text>
+  <text x="566" y="338" class="b">it and builds nothing.</text>
+
+  <!-- The one added line -->
+  <rect x="52" y="398" width="856" height="30" rx="6" fill="#FFF7D1" stroke="#F2D36B"/>
+  <text x="72" y="418" class="code mono on">&amp;prompt=select_account</text>
+  <rect x="540" y="403" width="20" height="20" rx="5" fill="#FFFFFF" stroke="#F2D36B"/>
+  <use href="#mark" transform="translate(542 405) scale(0.03125)"/>
+  <text x="566" y="418" font-size="12.5" font-weight="600" fill="#061838">Added by MS Account Picker — the only change</text>
+
+  <!-- The other mode, as the alternative it is -->
+  <rect x="52" y="436" width="856" height="30" rx="6" fill="none" stroke="#CBD5E1" stroke-dasharray="4 3"/>
+  <text x="72" y="456" class="code mono alt">&amp;login_hint=adele.admin@contoso.onmicrosoft.com</text>
+  <text x="566" y="456" class="s">Direct sign-in adds this instead — never both</text>
+
+  <!-- How it is applied -->
+  <text x="44" y="504" class="b"><tspan class="lead">Applied by the browser itself:</tspan> declarativeNetRequest, top-level navigation only. The extension never reads the request.</text>
+</svg>

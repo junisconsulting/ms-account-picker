@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 436" width="960" height="436">
+  <title>One ExtensionSettings policy force-installs the extension into every Edge profile of the Windows user; the everyday profile, never switched on, registers no rule, and only the admin profile, switched on once, gets the account chooser.</title>
+  <!-- An illustration, not a screenshot: no real accounts, tenants or customers appear.
+       The policy follows the ExtensionSettings block in docs/deployment.md §2, its version left
+       as a placeholder so the picture never goes stale; the checkbox label and chip follow
+       src/ui/config-ui.js and the light tokens of src/ui/config-ui.css, and the admin card's
+       rule row follows the two endpoint rules (OIDC and SAML) in src/lib/rules.js;
+       keep them in step when any of these change. -->
+  <style>
+    text { font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; }
+    .h { font-size: 15px; font-weight: 600; fill: #0F172A; }
+    .s { font-size: 12.5px; fill: #64748B; }
+    .t { font-size: 13px; fill: #334155; }
+    .cap { font-size: 10.5px; font-weight: 600; fill: #767676; letter-spacing: .5px; }
+    .lbl { font-size: 13px; font-weight: 600; fill: #0d1526; }
+    .mono, .mono text { font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace; }
+    .sub { font-size: 11px; fill: #7A5C00; }
+    .code { font-size: 11px; fill: #0F172A; }
+    .val { fill: #7A5C00; }
+    .key { font-size: 11px; fill: #334155; }
+    .band { font-size: 13px; font-weight: 600; fill: #061838; }
+  </style>
+  <defs>
+    <path id="check" d="M-4 0 l2.8 3 l5.2 -6" fill="none" stroke="#15803D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <g id="profile" fill="none" stroke-width="1.8" stroke-linecap="round">
+      <circle cx="15" cy="15" r="14"/>
+      <circle cx="15" cy="12" r="4.6"/>
+      <path d="M6.5 25 a9.5 7.5 0 0 1 17 0"/>
+    </g>
+    <clipPath id="admin-card"><rect x="552" y="198" width="384" height="158" rx="12"/></clipPath>
+  </defs>
+  <rect x="0.5" y="0.5" width="959" height="435" rx="16" fill="#F8FAFC" stroke="#E2E8F0"/>
+
+  <!-- The fork: one way in, two branches, the yellow one taken — the brand mark's idea.
+       Paint order as in assets/logo/mark.svg: yellow first, navy over it, the stem last. -->
+  <g fill="none" stroke-width="6" stroke-linecap="round">
+    <path d="M492 190 C522 190 524 277 556 277" stroke="#fcd218"/>
+    <path d="M492 190 C522 190 524 103 556 103" stroke="#061838"/>
+    <path d="M462 190 H494" stroke="#061838"/>
+  </g>
+
+  <!-- Left: the one policy -->
+  <rect x="24" y="24" width="440" height="332" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <g fill="none" stroke="#061838" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M44 41 h15 l7 7 v19 a3 3 0 0 1 -3 3 h-19 a3 3 0 0 1 -3 -3 v-23 a3 3 0 0 1 3 -3 z M59 41 v7 h7"/>
+    <path d="M47 55 h12 M47 61 h8"/>
+  </g>
+  <text x="80" y="52" class="h">One policy, every profile</text>
+  <text x="80" y="69" class="mono sub">ExtensionSettings</text>
+  <text x="40" y="96" class="t">Edge policy, browser-wide, no profile targeting:</text>
+  <rect x="36" y="108" width="416" height="130" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <g class="mono code">
+    <text x="50" y="129">"bapkfcamfgmaoaedkdljdmgpedpffjen": {</text>
+    <text x="66" y="148">"installation_mode": <tspan class="val">"force_installed"</tspan>,</text>
+    <text x="66" y="167">"update_url":</text>
+    <text x="82" y="186" class="val">"https://clients2.google.com/service/update2/crx",</text>
+    <text x="66" y="205">"minimum_version_required": <tspan class="val">"&lt;current store version&gt;"</tspan></text>
+    <text x="50" y="224">}</text>
+  </g>
+  <text x="40" y="262" class="s">Force-installed from the Chrome Web Store; it updates itself.</text>
+  <text x="40" y="279" class="s"><tspan class="mono key">minimum_version_required</tspan> blocks a downgrade.</text>
+  <path d="M40 297.5 H448" stroke="#EEF2F7"/>
+  <text x="40" y="317" class="cap">ROLLBACK</text>
+  <text x="40" y="336" class="s"><tspan class="mono key">"installation_mode": "blocked"</tspan> — never an older version.</text>
+
+  <!-- Top right: the everyday profile, never switched on -->
+  <rect x="552" y="24" width="384" height="158" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <use href="#profile" x="568" y="38" stroke="#94A3B8"/>
+  <text x="610" y="52" class="h">Everyday profile</text>
+  <text x="610" y="70" class="s">installed, never switched on</text>
+  <rect x="568" y="86" width="200" height="30" rx="8" fill="#F5F7FA" stroke="#DFE4EC"/>
+  <rect x="580" y="93" width="16" height="16" rx="3.5" fill="#FFFFFF" stroke="#94A3B8" stroke-width="1.3"/>
+  <text x="606" y="105.5" class="lbl">Active in this profile</text>
+  <use href="#check" x="584" y="134"/><text x="598" y="138" class="t">no rule registered</text>
+  <use href="#check" x="584" y="156"/><text x="598" y="160" class="t">sign-in exactly as before</text>
+
+  <!-- Bottom right: the admin profile, switched on once -->
+  <rect x="552" y="198" width="384" height="158" rx="12" fill="#FFFFFF" stroke="#F2D36B"/>
+  <rect x="552" y="198" width="5" height="158" fill="#fcd218" clip-path="url(#admin-card)"/>
+  <use href="#profile" x="568" y="212" stroke="#061838"/>
+  <text x="610" y="226" class="h">Admin profile</text>
+  <text x="610" y="244" class="s">switched on once, in this profile</text>
+  <rect x="568" y="260" width="200" height="30" rx="8" fill="#F5F7FA" stroke="#DFE4EC"/>
+  <rect x="580" y="267" width="16" height="16" rx="3.5" fill="#061838"/>
+  <path d="M584 275 l2.8 3 l5.2 -6" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="606" y="279.5" class="lbl">Active in this profile</text>
+  <use href="#check" x="584" y="308"/><text x="598" y="312" class="t">rules registered for portal and SAML sign-ins</text>
+  <use href="#check" x="584" y="330"/><text x="598" y="334" class="t">the account chooser when you sign in to Microsoft</text>
+
+  <!-- The point -->
+  <rect x="24" y="372" width="912" height="40" rx="8" fill="#FFF7D1" stroke="#F2D36B"/>
+  <text x="40" y="396.5" class="band">The switch lives in the profile, not in the policy — a policy reaches every profile of the Windows user.</text>
+</svg>

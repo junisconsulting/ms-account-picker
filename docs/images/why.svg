@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 428" width="960" height="428">
+  <title>Without the extension, opening portal.azure.com in the admin profile signs you in silently with the Windows account; with it, the account chooser lists both accounts and you pick the admin account.</title>
+  <!-- An illustration, not a screenshot: account names are Microsoft's fictional ones.
+       The flow follows docs/architecture.md §1 and §3.1 and the mode table in README.md;
+       keep them in step when the modes change.
+       The account chooser is drawn generic on purpose, without Microsoft's branding. -->
+  <style>
+    text { font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; }
+    .h { font-size: 16px; font-weight: 600; fill: #0F172A; }
+    .s { font-size: 12.5px; fill: #64748B; }
+    .step { font-size: 13px; fill: #334155; }
+    .n { font-size: 11.5px; font-weight: 600; text-anchor: middle; }
+    .cap { font-size: 10.5px; font-weight: 600; fill: #767676; letter-spacing: .5px; }
+    .ph { font-size: 13px; font-weight: 600; fill: #0F172A; }
+    .acct { font-size: 13px; fill: #334155; }
+    .ini { font-size: 10.5px; font-weight: 600; text-anchor: middle; }
+    .tag { font-size: 10.5px; font-weight: 600; fill: #475569; text-anchor: middle; }
+  </style>
+  <defs>
+    <!-- The mark from assets/logo/mark.svg, unchanged -->
+    <g id="mark">
+      <g transform="translate(256 256) scale(1.13) translate(-256 -256)">
+        <path d="M256 292 C256 214 332 158 404 136" fill="none" stroke="#fcd218" stroke-width="88" stroke-linecap="round"/>
+        <path d="M256 292 C256 214 180 158 108 136" fill="none" stroke="#061838" stroke-width="88" stroke-linecap="round"/>
+        <path d="M256 376 L256 288" fill="none" stroke="#061838" stroke-width="88" stroke-linecap="round"/>
+      </g>
+    </g>
+  </defs>
+  <rect x="0.5" y="0.5" width="959" height="427" rx="16" fill="#F8FAFC" stroke="#E2E8F0"/>
+
+  <!-- Without it -->
+  <rect x="24" y="24" width="440" height="380" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <g fill="none" stroke="#94A3B8" stroke-width="1.8" stroke-linejoin="round">
+    <rect x="44" y="44" width="24" height="20" rx="3"/>
+    <path d="M44 50 H68"/>
+  </g>
+  <text x="80" y="60" class="h">Without it</text>
+  <text x="80" y="79" class="s">in your admin browser profile</text>
+  <path d="M44 96 H444" stroke="#EEF2F7"/>
+
+  <g class="n" fill="#475569">
+    <circle cx="54" cy="119" r="10" fill="#F1F5F9" stroke="#CBD5E1"/><text x="54" y="123">1</text>
+    <circle cx="54" cy="149" r="10" fill="#F1F5F9" stroke="#CBD5E1"/><text x="54" y="153">2</text>
+    <circle cx="54" cy="179" r="10" fill="#F1F5F9" stroke="#CBD5E1"/><text x="54" y="183">3</text>
+  </g>
+  <text x="74" y="123" class="step">You open portal.azure.com</text>
+  <text x="74" y="153" class="step">The browser hands Microsoft your Windows sign-in</text>
+  <text x="74" y="183" class="step">No prompt, no choice — you are already signed in</text>
+
+  <rect x="44" y="204" width="400" height="130" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text x="58" y="228" class="cap">SIGNED IN AS</text>
+  <rect x="56" y="240" width="376" height="38" rx="6" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <circle cx="76" cy="259" r="11" fill="#E2E8F0"/>
+  <text x="76" y="263" class="ini" fill="#475569">AV</text>
+  <text x="96" y="263.5" class="acct">adele.vance@contoso.com</text>
+  <rect x="308" y="250" width="112" height="18" rx="9" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <text x="364" y="263" class="tag">Windows account</text>
+
+  <!-- The slot where the admin account sits on the right: empty, because no chooser appears -->
+  <rect x="56" y="284" width="376" height="38" rx="6" fill="none" stroke="#CBD5E1" stroke-dasharray="4 3"/>
+  <circle cx="76" cy="303" r="11" fill="none" stroke="#CBD5E1" stroke-dasharray="3 2.5"/>
+  <text x="96" y="307.5" font-size="13" fill="#64748B">Your admin account is not offered</text>
+
+  <rect x="40" y="352" width="408" height="36" rx="8" fill="#FEF2F2"/>
+  <text x="56" y="375" font-size="13" font-weight="600" fill="#B91C1C">Signed in — with the account you did not want.</text>
+
+  <!-- With MS Account Picker -->
+  <rect x="496" y="24" width="440" height="380" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <use href="#mark" transform="translate(514 40) scale(0.055)"/>
+  <text x="552" y="60" class="h">With MS Account Picker</text>
+  <text x="552" y="79" class="s">same profile, same portal</text>
+  <path d="M516 96 H916" stroke="#EEF2F7"/>
+
+  <g class="n" fill="#FFFFFF">
+    <circle cx="526" cy="119" r="10" fill="#061838"/><text x="526" y="123">1</text>
+    <circle cx="526" cy="149" r="10" fill="#061838"/><text x="526" y="153">2</text>
+    <circle cx="526" cy="179" r="10" fill="#061838"/><text x="526" y="183">3</text>
+  </g>
+  <text x="546" y="123" class="step">You open portal.azure.com</text>
+  <text x="546" y="153" class="step">The extension adds one parameter to the sign-in request</text>
+  <text x="546" y="183" class="step">You pick — or land straight on the account you set</text>
+
+  <rect x="516" y="204" width="400" height="130" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <text x="530" y="228" class="ph">Pick an account</text>
+  <rect x="528" y="240" width="376" height="38" rx="6" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <circle cx="548" cy="259" r="11" fill="#E2E8F0"/>
+  <text x="548" y="263" class="ini" fill="#475569">AV</text>
+  <text x="568" y="263.5" class="acct">adele.vance@contoso.com</text>
+  <rect x="780" y="250" width="112" height="18" rx="9" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <text x="836" y="263" class="tag">Windows account</text>
+
+  <rect x="528" y="284" width="376" height="38" rx="6" fill="#FFF7D1" stroke="#F2D36B"/>
+  <circle cx="548" cy="303" r="11" fill="#061838"/>
+  <text x="548" y="307" class="ini" fill="#FFFFFF">AA</text>
+  <text x="568" y="307.5" class="acct" font-weight="600" fill="#061838">adele.admin@contoso.onmicrosoft.com</text>
+  <circle cx="882" cy="303" r="9" fill="#061838"/>
+  <path d="M878 303 l2.8 3 l5.2 -6" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <rect x="512" y="352" width="408" height="36" rx="8" fill="#F0FDF4"/>
+  <text x="528" y="375" font-size="13" font-weight="600" fill="#15803D">Your admin account — chosen, not assumed.</text>
+</svg>

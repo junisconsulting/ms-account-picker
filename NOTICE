@@ -7,11 +7,11 @@ TRADEMARKS AND BRAND ASSETS
 
 The name "junis", the junis word mark and the logo files under assets/logo/ and
 src/icons/ are brand assets of junis GmbH. So are the screenshots under
-assets/screenshots/ and assets/store/, which show the mark in the extension's
-own header. They are not part of the Apache
-License grant (see LICENSE section 6). The code may be forked freely; a fork
-that is redistributed must replace the mark and must not present itself as a
-junis product.
+assets/store/, which show the mark in the extension's own header, and the
+README illustrations under docs/images/, which draw it. They are not part of
+the Apache License grant (see LICENSE section 6). The code may be forked
+freely; a fork that is redistributed must replace the mark and must not present
+itself as a junis product.
 
 THIRD-PARTY MATERIAL
 

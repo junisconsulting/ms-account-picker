@@ -87,7 +87,8 @@ ms-account-picker/
 │   ├── deployment.md             # ExtensionSettings policy, signing, rollout
 │   ├── verification-matrix.md    # Manual test matrix (portals × states)
 │   ├── store-listing.md          # Listing texts, permission justifications, privacy answers
-│   └── open-questions.md         # Open decisions — shrinks over the project
+│   ├── open-questions.md         # Open decisions — shrinks over the project
+│   └── images/                   # README illustrations — hand-written SVG, carry the mark
 ├── src/                          # The extension, loaded as written (no build step)
 │   ├── manifest.json
 │   ├── background/service-worker.js   # Rule sync only
@@ -129,7 +130,7 @@ When a session reveals that a documented procedure was wrong, that Chromium/ESTS
 
 Three consequences that follow from the licence and are not style preferences:
 
-- **`NOTICE` is part of the distribution.** Apache-2.0 §4(d) obliges downstream redistributors to carry it, so it stays short and factual. It holds the copyright line and the trademark reservation — the junis name and the logo files under `assets/logo/` and `src/icons/` are **not** covered by the code grant (§6), and neither are the screenshots under `assets/screenshots/` and `assets/store/`, which carry the mark.
+- **`NOTICE` is part of the distribution.** Apache-2.0 §4(d) obliges downstream redistributors to carry it, so it stays short and factual. It holds the copyright line and the trademark reservation — the junis name and the logo files under `assets/logo/` and `src/icons/` are **not** covered by the code grant (§6), and neither are the screenshots under `assets/store/` or the README illustrations under `docs/images/`, which carry the mark.
 - **No CLA.** §5 licenses inbound contributions under the same terms outbound, and this project has no dual-licensing path to protect. That is the difference from IDemFlow, which needs one — do not copy its CLA apparatus into this repository.
 - **Apache-2.0, not AGPL.** AGPL's §13 network-use trigger cannot fire for a browser extension: there is no service anyone could offer. It would add procurement friction without adding protection. Do not propose it again.
 
