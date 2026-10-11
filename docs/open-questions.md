@@ -12,6 +12,17 @@ What the mode is therefore worth: it saves the picker click **between** re-authe
 
 Done in the meantime, independent of the decision: the popup text and the README no longer promise more than the mode delivers.
 
+### F11 — Who has to agree before a version ships?
+
+The repository has no branch protection and no ruleset on `main`, and every person with write access is an admin. Since 2026-10-11 the release workflow refuses to publish unless the tagged source reproduces the hash in `deployment.md` §3.1. That proves the tag matches the record. It does not prove a second person saw the commit: whoever can push can change source and register row together (`security-review.md` §3, row *Release workflow*).
+
+Two places a second pair of eyes could sit:
+
+- **`main`**: a ruleset requiring a reviewed pull request, without admin bypass. This changes how everyone works in the repository.
+- **The store upload** (release skill, step 6): this is the delivery route itself, and it is done by one person's store account today. The repository check does not reach it.
+
+Not decided here, because it changes how people work, not the code.
+
 ## Decided
 
 ### F9 — Version control on the store route → auto-update accepted *(2026-08-18)*

@@ -1,6 +1,6 @@
 ---
 name: release
-description: Release procedure for the MS Account Picker extension — bump the version, package a reproducible ZIP, record its hash, write the changelog entry, tag the commit. Use when asked to cut a release, prepare a store upload, bump the version, or when a version number in src/manifest.json needs to change for any reason.
+description: Release procedure for the MS Account Picker extension — bump the version, package a reproducible ZIP, record its hash, write the changelog entry, tag the commit, which publishes the GitHub release. Use when asked to cut a release, prepare a store upload, bump the version, when a version number in src/manifest.json needs to change for any reason, or when a release workflow run failed.
 ---
 
 # Release Procedure
@@ -87,6 +87,10 @@ git push origin main --follow-tags
 
 The tag is what turns "which code is in 1.0.0?" from archaeology into one command. Annotated (`-a`), never lightweight — a lightweight tag carries no date and no author.
 
+Pushing the tag publishes the GitHub release. `.github/workflows/release.yml` rebuilds the ZIP from the tagged source and publishes only if the tag equals the manifest version, the ZIP's SHA-256 equals the register row from step 3, and `CHANGELOG.md` has a section for the version (step 4). That section becomes the release body, with the ZIP attached. Confirm with `gh release view v<version>`.
+
+A red run publishes nothing. A missing changelog section or a tag typo: fix it, delete the tag (`git push origin :v<version>`), re-tag. That is allowed only because nothing was published under it. **A hash mismatch is not a typo.** It is the case the check exists for: find out why the tagged source does not produce the reviewed bytes before touching anything. Published releases are immutable (repository setting), so a wrong one is answered with the next patch version, never by editing it.
+
 ## 6. Upload (only when a store upload is actually happening)
 
 Sequence from `docs/deployment.md` §1.1: create or open the dashboard item → upload the ZIP → **the extension ID is visible immediately**, before the listing is complete and before anything is published.
@@ -97,6 +101,8 @@ Once the version is **actually live** in the store, two records follow the numbe
 
 - The artefact register in `docs/deployment.md` §3.1 — this version's row becomes the one the store serves, and the previous row loses that label. Two rows, not one.
 - `minimum_version_required` in the `ExtensionSettings` policy in `docs/deployment.md` §2 — raise it to the version now published. **Never before it is live:** a floor above what the store serves does not hold an old version back, it leaves the fleet without a version it is allowed to run.
+
+GitHub marks the newest release *Latest*. That is the newest tag, not what the store serves — the register stays the only record of that.
 
 Nothing else in the repository carries a version, and nothing else should start to (step 0).
 

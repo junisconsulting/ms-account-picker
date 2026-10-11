@@ -73,6 +73,7 @@ ms-account-picker/
 ├── CLAUDE.md                     # This file — canonical project-wide rules
 ├── README.md                     # Purpose, status, quick start
 ├── CHANGELOG.md                  # What each version changed — the audit surface for auto-update
+├── .github/workflows/release.yml # Tag push → GitHub release: ZIP rebuilt, hash checked against the register
 ├── .claude/
 │   ├── settings.json             # Permissions + Stop hook
 │   ├── hooks/verify.sh           # The deterministic gate (exit 0 green / 2 red)

@@ -1,0 +1,63 @@
+name: Release
+
+# Pushing a version tag (release skill, step 5) publishes the GitHub release.
+# The runner rebuilds the store ZIP from the tagged source and refuses to
+# publish unless its hash equals the artefact register row in
+# docs/deployment.md §3.1 — a second, independent witness for that hash. The
+# release body is the version's CHANGELOG.md section, so the two cannot drift.
+# The store upload stays a manual step (release skill, step 6).
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Pinned to a commit, not a tag: a tag can be moved, and this job holds a
+      # token that can write releases. Bump deliberately, never by reflex.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Tag matches the manifest version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          manifest=$(python3 -c 'import json; print(json.load(open("src/manifest.json"))["version"])')
+          if [ "$version" != "$manifest" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match manifest version $manifest"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Rebuild the ZIP and match the artefact register
+        run: |
+          python3 tools/package.py --check
+          digest=$(sha256sum "build/ms-account-picker-$VERSION.zip" | cut -d' ' -f1)
+          if ! grep -F "| $VERSION |" docs/deployment.md | grep -qF "\`$digest\`"; then
+            echo "::error::SHA-256 $digest has no register row for $VERSION in docs/deployment.md §3.1"
+            exit 1
+          fi
+
+      - name: Release notes from CHANGELOG.md
+        run: |
+          # Everything between this version's heading and the next one.
+          awk -v h="## [$VERSION]" 'index($0, "## [") == 1 { f = index($0, h) == 1; next } f' CHANGELOG.md > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "::error::No CHANGELOG.md section for $VERSION"
+            exit 1
+          fi
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file notes.md \
+            --verify-tag \
+            "build/ms-account-picker-$VERSION.zip"

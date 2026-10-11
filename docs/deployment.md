@@ -116,6 +116,8 @@ Demonstrated on 2026-08-18: two packs byte-identical, and identical again after 
 
 Every uploaded version is recorded here. A version without an entry is not approved.
 
+Each tag's GitHub release carries the ZIP a GitHub runner rebuilt from the tagged source. The release workflow publishes only if that ZIP's hash equals the row here, so a release on the repository's release page is a second, independent confirmation of this table, and the place an auditor downloads the bytes from.
+
 **Never build a test artefact from an unbumped working tree.** `tools/package.py`
 names the archive after the version in `src/manifest.json`, so running it while
 that version is still the released one writes `build/ms-account-picker-<released>.zip`
